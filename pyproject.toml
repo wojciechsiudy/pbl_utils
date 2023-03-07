@@ -1,0 +1,13 @@
+[project]
+name = "pbl_utils"
+version = "0.0.2"
+dependencies = [
+    'geopy >= 2.3.0',
+    'pyserial',
+]
+
+[build-system]
+requires = [
+  "setuptools >= 40.9.0",
+]
+build-backend = "setuptools.build_meta"
