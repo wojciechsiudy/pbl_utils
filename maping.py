@@ -39,8 +39,8 @@ class Point:
 from geopy.distance import geodesic
 
 
-def calculate_position(anchor_A, anchor_B, ctrl_anchor, distance_a,
-                       distance_b):  # anchor_A ze współrzędnymi "(0,0)", distance_a/b od anchorów
+def calculate_position(anchor_A, anchor_B, ctrl_anchor, distance_b,
+                       distance_a):  # anchor_A ze współrzędnymi "(0,0)", distance_a/b od anchorów
     try:
         # c = anchor_A.get_distance_to(anchor_B) #odległośc między anchorami
         pa = (anchor_A.x, anchor_A.y)
