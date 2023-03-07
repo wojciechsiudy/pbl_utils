@@ -30,6 +30,7 @@ def get_distance(a:Point, b:Point) -> float:
 
 def calculate_position(anchor_A:Point, anchor_B:Point,\
     ctrl_anchor:Point, distance_a:float, distance_b:float):  # anchor_A ze współrzędnymi "(0,0)", distance_a/b od anchorów
+
     try:
         # c = anchor_A.get_distance_to(anchor_B) #odległośc między anchorami
         c = get_distance(anchor_A,anchor_B)
