@@ -1,4 +1,4 @@
-from ka_utils import Point
+from pbl_utils.maping import Point
 import json
 
 def read_json_file():
