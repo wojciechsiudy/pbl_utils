@@ -40,10 +40,13 @@ def calculate_position(anchor_A:Point, anchor_B:Point,\
             distance_b *= scale_offset_factor
         # print("C:", c)
         cos_a = (pow(distance_b, 2) + pow(c, 2) - pow(distance_a, 2)) / abs(2 * distance_b * c)
-        # print("COS_A:",cos_a)
-        tempy = float(((distance_b * cos_a) / 1852) / 60)
-        tempx = float(((distance_b * math.sqrt(1 - cos_a * cos_a)) / 1852) / 60)
-        # print("tempx:", tempx, "tempy:", tempy)
+        #cos_a = (pow(distance_a, 2) + pow(distance_b, 2) - pow(c, 2)) / (2 * (distance_a * distance_b))
+        print("COS_A:",cos_a)
+        #tempy = float(((distance_b * cos_a) / 1852) / 60)
+        tempy = float((distance_b * cos_a) / 111139)
+        #tempx = float(((distance_b * math.sqrt(1 - cos_a * cos_a)) / 1852) / 60)
+        tempx = float((distance_b * math.sqrt(1 - cos_a * cos_a)) / 111139)
+        #print("tempx:", tempx, "tempy:", tempy)
         if anchor_A.x > ctrl_anchor.x:
             x = anchor_A.x - tempx
         else:
@@ -55,6 +58,42 @@ def calculate_position(anchor_A:Point, anchor_B:Point,\
     except (ZeroDivisionError, ValueError, AttributeError):
         return Point(0.0, 0.0)
     return Point(x, y)
+
+def calc_circle(anchor_A, anchor_B, ctrl_anchor, distance_a, distance_b):
+    # circle 1: (x0, y0), radius r0
+    # circle 2: (x1, y1), radius r1
+
+    d = math.sqrt((anchor_B.x - anchor_A.x) ** 2 + (anchor_B.y - anchor_A.y) ** 2)
+    ra = distance_a/111139
+    rb = distance_b/111139
+    # non intersecting
+    if d > ra + rb:
+        return Point(0, 0)
+    # One circle within other
+    if d < abs(ra - rb):
+        return Point(0, 0)
+    # coincident circles
+    if d == 0 and ra == rb:
+        return Point(0, 0)
+    else:
+        a = (ra ** 2 - rb ** 2 + d ** 2) / (2 * d)
+        h = math.sqrt(ra ** 2 - a ** 2)
+        x2 = anchor_A.x + a * (anchor_B.x - anchor_A.x) / d
+        y2 = anchor_A.y + a * (anchor_B.y - anchor_A.y) / d
+        x3 = x2 + h * (anchor_B.y - anchor_A.y) / d
+        y3 = y2 - h * (anchor_B.x - anchor_A.x) / d
+
+        x4 = x2 - h * (anchor_B.y - anchor_A.y) / d
+        y4 = y2 + h * (anchor_B.x - anchor_A.x) / d
+
+        #return (x3, y3, x4, y4)
+        pa = (x3, y3)
+        pb = (x4, y4)
+        pg = (ctrl_anchor.x, ctrl_anchor.y)
+        if geodesic(pa, pg).m < geodesic(pb, pg).m:
+            return Point(x3, y3)
+        else:
+            return Point(x4, y4)
 
 def gps_data_to_point(data):
     lat_raw = data[2]
