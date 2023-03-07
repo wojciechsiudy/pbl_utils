@@ -1,4 +1,5 @@
 import math, csv
+from geopy.distance import geodesic
 
 rows = []
 
@@ -15,9 +16,10 @@ while True:
     xs = float(input("sa"))
     ys = float(input("sa"))
 
-    a = math.sqrt((xs - xa)**2 + (ys - ya)**2)
-
-    b = math.sqrt((xs - xb)**2 + (ys - yb)**2)
+    #a = math.sqrt((xs - xa)**2 + (ys - ya)**2) *60 *1852
+    a = geodesic((xs, ys), (xa, ya)).m
+    #b = math.sqrt((sxs - xb)**2 + (ys - yb)**2) *60 *1852
+    b = geodesic((xs, ys), (xb, yb)).m
 
     row = (xa, ya, a, xb, yb, b, xs, ys)
 
