@@ -127,3 +127,6 @@ class UwbSerialConnection:
         self.alive_ping.put("X")
 
 
+class UwbBluetoothConnection:
+    def __init__(self) -> None:
+        pass
