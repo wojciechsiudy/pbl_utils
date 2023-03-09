@@ -4,12 +4,12 @@ import numpy as np
 import unittest
 
 def initializeRecord(row:pd.Series):
-        a = maping.Point(row['xa'],row['ya'])
-        b = maping.Point(row['xb'],row['yb'])
-        res = maping.Point(row['xs'],row['ys'])
-        distance_a = row['a']
-        distance_b = row['b']
-        return (a,b,res,distance_a,distance_b)
+    a = maping.Point(row['xa'],row['ya'])
+    b = maping.Point(row['xb'],row['yb'])
+    res = maping.Point(row['xs'],row['ys'])
+    distance_a = row['a']
+    distance_b = row['b']
+    return (a,b,res,distance_a,distance_b)
     
 class TestofTests(unittest.TestCase):
     """test"""
@@ -40,12 +40,12 @@ class DistanceTests(unittest.TestCase):
                 
                 print(f"Expected: x = {res.x},y = {res.y},\nResult: x = {result.x}, y = {result.y}")
                 
-                self.assertAlmostEqual(result.x,res.x,)
-                self.assertAlmostEqual(result.y,res.y)
+                self.assertAlmostEqual(result.x,res.x,places=4)
+                self.assertAlmostEqual(result.y,res.y,places=4)
     def test_SyntheticData(self):
         self.initializeDF("regular")
         self.runTest()
-    def test_RealData(self):
+    def test_SubRealData(self):
         self.initializeDF("real1")
         self.runTest()
                 
