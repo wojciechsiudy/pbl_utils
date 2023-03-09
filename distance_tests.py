@@ -36,7 +36,7 @@ class DistanceTests(unittest.TestCase):
             a,b,res,distance_a,distance_b = initializeRecord(row)
                         
             with self.subTest(msg=f"{index}th Test: "):
-                result: maping.Point = maping.calculate_position(a,b,res,distance_a, distance_b)
+                result: maping.Point = maping.calc_circle(a,b,res,distance_a, distance_b)
                 
                 print(f"Expected: x = {res.x},y = {res.y},\nResult: x = {result.x}, y = {result.y}")
                 
