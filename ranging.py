@@ -1,6 +1,6 @@
 import json
 import BLE_GATT
-from esptool.reset import HardReset as esptool_reset
+import esptool
 
 UWB_ERROR_MESSAGE = "Hello Dupa"
 
@@ -10,7 +10,13 @@ class UwbDataError(Exception):
 class ConnectionError(Exception):
     pass
 
+class UwbFatalError(Exception):
+    pass
+
 class UwbData:
+    """
+    Data returned from UWB device
+    """
     def __init__(self, data: str = ""):
         data_array = data.split("|")
         if len(data_array) < 2:
@@ -20,12 +26,28 @@ class UwbData:
         self.power = float(data_array[2])
 
 class UwbBluetoothConnection:
+    """
+    Entity responsible for communication
+
+    Usage:
+        connection = UwbBluetoothConnection()
+        connection.connect()
+        connection.ask_for_distance(anchor_address)
+        distance = connection.read_anwser()
+        connection.disconnect()
+
+    Constructor throws UwbFatalError when connection is
+    not possible
+    """
     def __init__(self):
         self.debug_level = 0 # 0 is silent, 3 speaks a lot
         self.read_settings_from_json()
-        self.debug("Pairing...", 2)
-        self.device = BLE_GATT.Central(self.uwb_mac_adress)
-        self.debug("Device ready", 2)
+        self.debug("Lanuching BLE device...", 2)
+        try:
+            self.device = BLE_GATT.Central(self.uwb_mac_adress)
+        except:
+            self.debug("Device not found!", 0)
+            raise UwbFatalError
 
     def read_settings_from_json(self):
         try:
@@ -41,15 +63,22 @@ class UwbBluetoothConnection:
         self.debug("Settings loaded!", 3)
 
     def debug(self, message: str, level=3):
-        if self.debug_level >= level:
+        if self.debug_level <= level:
             print(message)
 
     def connect(self):
         self.debug("Connecting...", 2)
-        self.device.connect()
+        try:
+            self.device.connect()
+        except:
+            self.debug("Connection failed. Some error in BLE-GATT", 1)
+            raise ConnectionError
         self.debug("Device connected!", 2)
 
     def ask_for_distance(self, address: str, amount=1):
+        """
+        Send ranging request
+        """
         message = address + str(amount)
         self.debug("Sending " + str(amount) + " packet(s) to " + address, 3)
         try:
@@ -61,6 +90,9 @@ class UwbBluetoothConnection:
             raise ConnectionError
 
     def read_anwser(self) -> UwbData:
+        """
+        Read the last recived distance
+        """
         try:
             raw_anwser = self.device.char_read(self.read_characteristic)
         except:
@@ -92,14 +124,15 @@ class UwbBluetoothConnection:
         self.device.disconnect()
 
     def restart(self):
-        rest = esptool_reset("dev/ttyUSB0")
-        rest()
         self.disconnect()
         self.connect()
 
 
 # sample to be deleted soon
-connection = UwbBluetoothConnection()
+try:
+    connection = UwbBluetoothConnection()
+except UwbFatalError:
+    raise SystemExit
 connection.connect()
 connection.debug_level = 3
 
