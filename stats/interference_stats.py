@@ -1,7 +1,7 @@
 from serial import Serial, SerialException
 from threading import Thread
 
-FRAMES_AMOUNT = 100
+FRAMES_AMOUNT = 10
 
 BAUDRATE = 115200
 
@@ -33,14 +33,20 @@ for i in range(iterations):
     serial_1 = Serial(SERIAL_PORT_1, BAUDRATE)
     serial_2 = Serial(SERIAL_PORT_2, BAUDRATE)
     
-    t1 = Thread(target=serial_read_write, args=(message_1, file_name_prefix + "_1.txt", serial_1))
-    t2 = Thread(target=serial_read_write, args=(message_2, file_name_prefix + "_2.txt", serial_2))
+    t1 = Thread(target=serial_read_write, args=("/stats/" + message_1, file_name_prefix + "_1.txt", serial_1))
+    t2 = Thread(target=serial_read_write, args=("/stats/" + message_2, file_name_prefix + "_2.txt", serial_2))
 
+    print("Starting t1...")
     t1.start()
+    print("t1 started")
+    print("Starting t2...")
     t2.start()
+    print("t2 started")
 
     t1.join()
+    print("t1 joined")
     t2.join()
+    print("t2 joined")
 
 
 print("All done")
