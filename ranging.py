@@ -128,15 +128,16 @@ class UwbBluetoothConnection:
         self.connect()
 
 
-# sample to be deleted soon
-try:
-    connection = UwbBluetoothConnection()
-except UwbFatalError:
-    raise SystemExit
-connection.connect()
-connection.debug_level = 3
 
-
-for i in range(3000):
-    print(connection.tmp_get_distance("AA:04"))
-    print(connection.tmp_get_distance("AA:05"))
+### sample code ###
+#try:
+#    connection = UwbBluetoothConnection()
+#except UwbFatalError:
+#    raise SystemExit
+#connection.connect()
+#connection.debug_level = 3
+#
+#
+#for i in range(3000):
+#    print(connection.tmp_get_distance("AA:04"))
+#    print(connection.tmp_get_distance("AA:05"))
