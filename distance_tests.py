@@ -1,12 +1,12 @@
-import maping
+import mapping
 import pandas as pd
 import numpy as np
 import unittest
 
 def initializeRecord(row:pd.Series):
-    a = maping.Point(row['xa'],row['ya'])
-    b = maping.Point(row['xb'],row['yb'])
-    res = maping.Point(row['xs'],row['ys'])
+    a = mapping.Point(row['xa'],row['ya'])
+    b = mapping.Point(row['xb'],row['yb'])
+    res = mapping.Point(row['xs'],row['ys'])
     distance_a = row['a']
     distance_b = row['b']
     return (a,b,res,distance_a,distance_b)
@@ -36,7 +36,7 @@ class DistanceTests(unittest.TestCase):
             a,b,res,distance_a,distance_b = initializeRecord(row)
                         
             with self.subTest(msg=f"{index}th Test: "):
-                result: maping.Point = maping.calc_circle(a,b,res,distance_a, distance_b)
+                result: mapping.Point = mapping.calc_circle(a,b,res,distance_a, distance_b)
                 
                 print(f"Expected: x = {res.x},y = {res.y},\nResult: x = {result.x}, y = {result.y}")
                 
