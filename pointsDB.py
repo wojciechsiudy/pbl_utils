@@ -1,4 +1,4 @@
-from pbl_utils.maping import Point
+from .mapping import Point
 import json
 
 def read_json_file():
