@@ -2,7 +2,7 @@ import json
 import BLE_GATT
 import esptool
 
-UWB_ERROR_MESSAGE = "Hello Dupa"
+UWB_ERROR_MESSAGE = "Hello Wojtek"
 
 class UwbDataError(Exception):
     pass
@@ -17,13 +17,25 @@ class UwbData:
     """
     Data returned from UWB device
     """
-    def __init__(self, data: str = ""):
+    def __init__(self, tag_adress:str = "none", distance:float = 0.0, power:float = 0.0):
+        self.tag_address = tag_adress
+        self.distance = distance
+        self.power = power      
+
+    @staticmethod
+    def create_UWB_data(data: str = ""):
+        """
+        Method converting raw UWB data to UwbData object
+        """
         data_array = data.split("|")
         if len(data_array) < 2:
             raise UwbDataError
-        self.tag_address = data_array[0][:5]
-        self.distance = float(data_array[1])
-        self.power = float(data_array[2])
+        tag_address = data_array[0][:5]
+        distance = float(data_array[1])
+        power = float(data_array[2])
+        return UwbData(tag_address, distance, power)
+
+
 
 class UwbBluetoothConnection:
     """
@@ -63,7 +75,7 @@ class UwbBluetoothConnection:
         self.debug("Settings loaded!", 3)
 
     def debug(self, message: str, level=3):
-        if self.debug_level <= level:
+        if self.debug_level >= level:
             print(message)
 
     def connect(self):
@@ -98,14 +110,14 @@ class UwbBluetoothConnection:
         except:
             self.debug("Unknown BLE error", 2)
             raise ConnectionError
-        self.debug("Raw data is: " + str(raw_anwser), 3)
+        self.debug("Raw data is: " + str(raw_anwser), 4)
         anwser = ""
         for byte in raw_anwser:
             anwser += chr(byte)
         self.debug("Encoded data is: " + anwser, 3)
         if anwser == UWB_ERROR_MESSAGE:
             raise ConnectionError
-        return UwbData(anwser)
+        return UwbData.create_UWB_data(anwser)
     
     def tmp_get_distance(self, address: str) -> float:
         try:
@@ -117,6 +129,9 @@ class UwbBluetoothConnection:
             return 0
         if address != uwb_data.tag_address:
             self.debug("Old data or wrong tag anwsered.", 3)
+        # this check is never true, but should
+        if uwb_data.distance == 0:
+            self.debug("!!!! Got distance == 0. This error is not handled !!!!", 1)
         return uwb_data.distance
 
 
@@ -128,15 +143,16 @@ class UwbBluetoothConnection:
         self.connect()
 
 
-# sample to be deleted soon
-try:
-    connection = UwbBluetoothConnection()
-except UwbFatalError:
-    raise SystemExit
-connection.connect()
-connection.debug_level = 3
+
+## sample code ###
+# try:
+#    connection = UwbBluetoothConnection()
+# except UwbFatalError:
+#    raise SystemExit
+# connection.connect()
+# connection.debug_level = 3
 
 
-for i in range(3000):
-    print(connection.tmp_get_distance("AA:04"))
-    print(connection.tmp_get_distance("AA:05"))
+# for i in range(3000):
+#    print(connection.tmp_get_distance("AA:04"))
+#    print(connection.tmp_get_distance("AA:05"))
