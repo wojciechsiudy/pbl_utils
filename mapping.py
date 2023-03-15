@@ -27,11 +27,11 @@ def get_distance(a:Point, b:Point) -> float:
     pb = (b.x, b.y)
     return geodesic(pa, pb).m
 
-def calc_circle(anchor_A, anchor_B, ctrl_anchor, distance_a, distance_b):       #using WGS-84 ellipsoid and EPSG3035
+def calc_circle(anchor_A, anchor_B, ctrl_anchor, distance_a, distance_b):       #using WGS-84 ellipsoid and EPSG2177
     # circle 1: (x0, y0), radius r0
     # circle 2: (x1, y1), radius r1
-    transformer1 = Transformer.from_crs("EPSG:4326", "EPSG:2180")        #tłumacz z gps na polski
-    transformer2 = Transformer.from_crs("EPSG:2180", "EPSG:4326")        #tłumacz z polskiego na gps
+    transformer1 = Transformer.from_crs("EPSG:4326", "EPSG:2177")        #transform from WGS84 to PL-2000
+    transformer2 = Transformer.from_crs("EPSG:2177", "EPSG:4326")        #transform from PL-2000 to WGS84
     anch_xy_A = transformer1.transform(anchor_A.x, anchor_A.y)
     anch_xy_B = transformer1.transform(anchor_B.x, anchor_B.y)
     ctrlanch_xy = transformer1.transform(ctrl_anchor.x, ctrl_anchor.y)
