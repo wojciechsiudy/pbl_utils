@@ -3,20 +3,23 @@ from serial import Serial
 from geopy.distance import geodesic
 from pyproj import Transformer
 
+from .uwb_constants import UwbConstants
 
 POSITION_RADIUS_M : float = float('inf')
 MAX_UWB_OFFSET_FACTOR: float = 1.15
 
 
 class Point:
+    """
+    Class holding data about point on Earth surface
+    """
     def __init__(self, x: float, y: float , address:str="TAG"):
         self.x = x
         self.y = y
         self.address = address
-        self.is_observed :bool = False
 
     def is_around(self, another):
-        distance = self.get_distance_to(another)
+        distance = get_distance(self, another)
         if (distance > POSITION_RADIUS_M):
             return False
         else:
@@ -27,9 +30,18 @@ def get_distance(a:Point, b:Point) -> float:
     pb = (b.x, b.y)
     return geodesic(pa, pb).m
 
-def calc_circle(anchor_A, anchor_B, ctrl_anchor, distance_a, distance_b):       #using WGS-84 ellipsoid and EPSG2177
-    # circle 1: (x0, y0), radius r0
-    # circle 2: (x1, y1), radius r1
+def calculate_position(anchor_A: Point, anchor_B: Point, ctrl_anchor: Point, 
+                distance_a: float, distance_b: float, 
+                power_a: float, power_b: float):
+    """
+    Function calculating position based on:
+        - positions     of anchor_A and anchor_B
+        - position      of ctrl_anchor from GPS
+        - distances     to anchor_A and anchor_B    in meters
+        - power         of anchor_A and anchor_B    in dB
+
+    Using WGS-84 ellipsoid and EPSG2177
+    """
     transformer1 = Transformer.from_crs("EPSG:4326", "EPSG:2177")        #transform from WGS84 to PL-2000
     transformer2 = Transformer.from_crs("EPSG:2177", "EPSG:4326")        #transform from PL-2000 to WGS84
     anch_xy_A = transformer1.transform(anchor_A.x, anchor_A.y)
@@ -142,6 +154,10 @@ def calc_circle(anchor_A, anchor_B, ctrl_anchor, distance_a, distance_b):
             return Point(x4, y4)'''
 
 def gps_data_to_point(data):
+    """
+    Converts GPS sentence in NMEA-2000 standard
+    to instance of Point class
+    """
     lat_raw = data[2]
     lat_deg = float(lat_raw[0:2])
     lat_min = float(lat_raw[2:])
@@ -162,11 +178,15 @@ def gps_data_to_point(data):
 
 
 def get_position():
-    gps_serial = Serial("/dev/GPS")
+    """
+    Reads point from GPS device.
+    """
+    settings = UwbConstants()
+    gps_serial = Serial(settings.get_value("GPS_SERIAL_ADDRESS"))
     while (True):
         try:
             line = str(gps_serial.readline(), encoding="ASCII")
-            if "GPGGA" in line:
+            if "GPGGA" in line: # read line containig position
                 data = line.split(',')
                 if (int(data[7]) > 0):  # enough satellites
                     return (gps_data_to_point(data))
