@@ -2,6 +2,8 @@ import json
 import BLE_GATT
 import esptool
 
+from .uwb_constants import UwbConstants
+
 UWB_ERROR_MESSAGE = "Hello Wojtek"
 
 class UwbDataError(Exception):
@@ -11,6 +13,9 @@ class ConnectionError(Exception):
     pass
 
 class UwbFatalError(Exception):
+    pass
+
+class UwbIncorrectData(Exception):
     pass
 
 class UwbData:
@@ -52,26 +57,21 @@ class UwbBluetoothConnection:
     not possible
     """
     def __init__(self):
-        self.debug_level = 0 # 0 is silent, 3 speaks a lot
+        self.debug_level = 3 # 0 is silent, 3 speaks a lot
         self.read_settings_from_json()
         self.debug("Lanuching BLE device...", 2)
         try:
             self.device = BLE_GATT.Central(self.uwb_mac_adress)
         except:
-            self.debug("Device not found!", 0)
+            self.debug("Device not found! Adress used: " + self.uwb_mac_adress, 0)
             raise UwbFatalError
 
     def read_settings_from_json(self):
-        try:
-            file = open("settings.json")
-        except FileNotFoundError:
-            self.debug("Settings file not found! Aborting setup.", 1)
-            return
-        settings = json.load(file)
-        self.uwb_mac_adress = settings["DEVICE_ADDRESS"]
-        self.service_uuid = settings["SERVICE_UUID"]
-        self.read_characteristic = settings["READ_CHARACTERISTIC_UUID"]
-        self.write_characteristic = settings["WRITE_CHARACTERISTIC_UUID"]
+        settings = UwbConstants()
+        self.uwb_mac_adress = settings.get_value("DEVICE_ADDRESS")
+        self.service_uuid = settings.get_value("SERVICE_UUID")
+        self.read_characteristic = settings.get_value("READ_CHARACTERISTIC_UUID")
+        self.write_characteristic = settings.get_value("WRITE_CHARACTERISTIC_UUID")
         self.debug("Settings loaded!", 3)
 
     def debug(self, message: str, level=3):
@@ -119,7 +119,17 @@ class UwbBluetoothConnection:
             raise ConnectionError
         return UwbData.create_UWB_data(anwser)
     
-    def tmp_get_distance(self, address: str) -> float:
+    def read_uwb_data(self, address: str) -> UwbData:
+        """
+        Method provides distance to anchor that
+        address is passed
+
+        When any problem occurs connection is reset,
+        however hard reset via RTS pin is not implemented
+
+        Throws:
+            - UwbIncorrectData if tag is not avaliable
+        """
         try:
             self.ask_for_distance(address)
             uwb_data = self.read_anwser()
@@ -129,10 +139,12 @@ class UwbBluetoothConnection:
             return 0
         if address != uwb_data.tag_address:
             self.debug("Old data or wrong tag anwsered.", 3)
-        # this check is never true, but should
-        if uwb_data.distance == 0:
-            self.debug("!!!! Got distance == 0. This error is not handled !!!!", 1)
-        return uwb_data.distance
+            raise UwbIncorrectData
+        elif uwb_data.distance is int:
+            self.debug("!!!! Got distance as an int. This error is not handled !!!!", 1)
+            raise ConnectionError
+        else:
+            return uwb_data
 
 
     def disconnect(self):
@@ -141,18 +153,3 @@ class UwbBluetoothConnection:
     def restart(self):
         self.disconnect()
         self.connect()
-
-
-
-## sample code ###
-# try:
-#    connection = UwbBluetoothConnection()
-# except UwbFatalError:
-#    raise SystemExit
-# connection.connect()
-# connection.debug_level = 3
-
-
-# for i in range(3000):
-#    print(connection.tmp_get_distance("AA:04"))
-#    print(connection.tmp_get_distance("AA:05"))

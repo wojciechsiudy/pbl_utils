@@ -1,6 +1,7 @@
 import math
 from serial import Serial
 from geopy.distance import geodesic
+from pyproj import Transformer
 
 
 POSITION_RADIUS_M : float = float('inf')
@@ -26,9 +27,53 @@ def get_distance(a:Point, b:Point) -> float:
     pb = (b.x, b.y)
     return geodesic(pa, pb).m
 
+def calc_circle(anchor_A, anchor_B, ctrl_anchor, distance_a, distance_b):       #using WGS-84 ellipsoid and EPSG2177
+    # circle 1: (x0, y0), radius r0
+    # circle 2: (x1, y1), radius r1
+    transformer1 = Transformer.from_crs("EPSG:4326", "EPSG:2177")        #transform from WGS84 to PL-2000
+    transformer2 = Transformer.from_crs("EPSG:2177", "EPSG:4326")        #transform from PL-2000 to WGS84
+    anch_xy_A = transformer1.transform(anchor_A.x, anchor_A.y)
+    anch_xy_B = transformer1.transform(anchor_B.x, anchor_B.y)
+    ctrlanch_xy = transformer1.transform(ctrl_anchor.x, ctrl_anchor.y)
+    
+    d = math.sqrt((anch_xy_B[0] - anch_xy_A[0]) ** 2 + (anch_xy_B[1] - anch_xy_A[1]) ** 2)
+    
+    ra = distance_a
+    rb = distance_b
+    # non intersecting
+    if d > ra + rb:
+        return Point(0, 0)
+    # One circle within other
+    if d < abs(ra - rb):
+        return Point(0, 0)
+    # coincident circles
+    if d == 0 and ra == rb:
+        return Point(0, 0)
+    else:
+        a = (ra ** 2 - rb ** 2 + d ** 2) / (2 * d)
+        h = math.sqrt(ra ** 2 - a ** 2)
+        x2 = anch_xy_A[0] + a * (anch_xy_B[0] - anch_xy_A[0]) / d
+        y2 = anch_xy_A[1] + a * (anch_xy_B[1] - anch_xy_A[1]) / d
+        x3 = x2 + h * (anch_xy_B[1] - anch_xy_A[1]) / d
+        y3 = y2 - h * (anch_xy_B[0] - anch_xy_A[0]) / d
+
+        x4 = x2 - h * (anch_xy_B[1] - anch_xy_A[1]) / d
+        y4 = y2 + h * (anch_xy_B[0] - anch_xy_A[0]) / d
+
+        #return (x3, y3, x4, y4)
+        pa = (x3, y3)
+        pb = (x4, y4)
+        d1 = math.sqrt((ctrlanch_xy[0] - pa[0]) **2 + (ctrlanch_xy[1] - pa[1]) **2)
+        d2 = math.sqrt((ctrlanch_xy[0] - pb[0]) **2 + (ctrlanch_xy[1] - pb[1]) **2)
+        if d1 < d2:
+            position = transformer2.transform(x3, y3)
+            return Point(position[0], position[1])
+        else:
+            position = transformer2.transform(x4, y4)
+            return Point(position[0], position[1])
 
 
-def calculate_position(anchor_A:Point, anchor_B:Point,\
+'''def calculate_position(anchor_A:Point, anchor_B:Point,\
     ctrl_anchor:Point, distance_a:float, distance_b:float):  # anchor_A ze współrzędnymi "(0,0)", distance_a/b od anchorów
 
     try:
@@ -94,7 +139,7 @@ def calc_circle(anchor_A, anchor_B, ctrl_anchor, distance_a, distance_b):
         if geodesic(pa, pg).m < geodesic(pb, pg).m:
             return Point(x3, y3)
         else:
-            return Point(x4, y4)
+            return Point(x4, y4)'''
 
 def gps_data_to_point(data):
     lat_raw = data[2]
