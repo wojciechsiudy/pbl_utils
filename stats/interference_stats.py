@@ -1,15 +1,16 @@
 from serial import Serial, SerialException
 from threading import Thread
+import multiprocessing
 
-FRAMES_AMOUNT = 100
+FRAMES_AMOUNT = 50
 
 BAUDRATE = 115200
 
-SERIAL_PORT_1 = "COM12"
-SERIAL_PORT_2 = "COM7"
+SERIAL_PORT_1 = "COM8"
+SERIAL_PORT_2 = "COM5"
 
-ANCHOR_ADDRESS_1 = "AA:05"
-ANCHOR_ADDRESS_2 = "AA:04"
+ANCHOR_ADDRESS_1 = "AA:04"
+ANCHOR_ADDRESS_2 = "AA:05"
 
 def serial_read_write(message, filename, serial):
     serial.write(bytes(message, "ASCII"))
@@ -33,13 +34,13 @@ for i in range(iterations):
     serial_1 = Serial(SERIAL_PORT_1, BAUDRATE)
     serial_2 = Serial(SERIAL_PORT_2, BAUDRATE)
     
-    t1 = Thread(target=serial_read_write, args=(message_1, "./stats/" + file_name_prefix + "_1.txt", serial_1))
-    t2 = Thread(target=serial_read_write, args=(message_2, "./stats/" + file_name_prefix + "_2.txt", serial_2))
+    t1 = multiprocessing.Process(target=serial_read_write, args=(message_1, "./stats/" + file_name_prefix + "_" + str(FRAMES_AMOUNT) + "_1.txt", serial_1))
+    t2 = multiprocessing.Process(target=serial_read_write, args=(message_2, "./stats/" + file_name_prefix + "_" + str(FRAMES_AMOUNT) + "_2.txt", serial_2))
 
     print("Starting t1...")
     t1.start()
-    print("t1 started")
-    print("Starting t2...")
+    # print("t1 started")
+    # print("Starting t2...")
     t2.start()
     print("t2 started")
 
