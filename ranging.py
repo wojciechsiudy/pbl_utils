@@ -1,7 +1,8 @@
 import json
 import BLE_GATT
 import esptool
-
+import time
+from serial import Serial, SerialException
 from .uwb_constants import UwbConstants
 
 UWB_ERROR_MESSAGE = "Hello Wojtek"
@@ -40,9 +41,16 @@ class UwbData:
         power = float(data_array[2])
         return UwbData(tag_address, distance, power)
 
+class UwbDataPair:
+    """
+    Pair of UWB messages
+    """
+    def __init__(self, nearest: UwbData, second: UwbData):
+        self.nearest = nearest
+        self.second = nearest
 
 
-class UwbBluetoothConnection:
+class UwbConnection:
     """
     Entity responsible for communication
 
@@ -61,17 +69,20 @@ class UwbBluetoothConnection:
         self.read_settings_from_json()
         self.debug("Lanuching BLE device...", 2)
         try:
-            self.device = BLE_GATT.Central(self.uwb_mac_adress)
+            self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
+            self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"))
+        except SerialException:
+            self.debug("Serial error!", 1)
         except:
-            self.debug("Device not found! Adress used: " + self.uwb_mac_adress, 0)
+            self.debug("Bluetooth error. Device not found! Adress used: " + self.uwb_mac_adress, 0)
             raise UwbFatalError
 
     def read_settings_from_json(self):
-        settings = UwbConstants()
-        self.uwb_mac_adress = settings.get_value("DEVICE_ADDRESS")
-        self.service_uuid = settings.get_value("SERVICE_UUID")
-        self.read_characteristic = settings.get_value("READ_CHARACTERISTIC_UUID")
-        self.write_characteristic = settings.get_value("WRITE_CHARACTERISTIC_UUID")
+        self.settings = UwbConstants()
+        self.uwb_mac_adress = self.settings.get_value("DEVICE_ADDRESS")
+        self.service_uuid = self.settings.get_value("SERVICE_UUID")
+        self.read_characteristic = self.settings.get_value("READ_CHARACTERISTIC_UUID")
+        self.write_characteristic = self.settings.get_value("WRITE_CHARACTERISTIC_UUID")
         self.debug("Settings loaded!", 3)
 
     def debug(self, message: str, level=3):
@@ -81,12 +92,17 @@ class UwbBluetoothConnection:
     def connect(self):
         self.debug("Connecting...", 2)
         try:
-            self.device.connect()
+            self.ble_device.connect()
+            #self.serial_device.open()
+        except SerialException:
+            self.debug("Serial error!", 1)
+            raise ConnectionError
         except:
             self.debug("Connection failed. Some error in BLE-GATT", 1)
             raise ConnectionError
         self.debug("Device connected!", 2)
 
+    @DeprecationWarning
     def ask_for_distance(self, address: str, amount=1):
         """
         Send ranging request
@@ -94,19 +110,43 @@ class UwbBluetoothConnection:
         message = address + str(amount)
         self.debug("Sending " + str(amount) + " packet(s) to " + address, 3)
         try:
-            self.device.char_write(self.write_characteristic, bytes(message, 'utf-8'))
+            t1=time.time()
+            self.ble_device.char_write(self.write_characteristic, bytes(message, 'utf-8'))
+            t2=time.time()
+            self.debug(f"Elapsed time in {self.ble_device.char_write.__name__}: {str(t1 - t2)}", 2)
+
         except KeyError:
             self.debug("Write error. Probably UUID not found", 1)
         except:
             self.debug("Unknown BLE error", 2)
             raise ConnectionError
+        
+    def ask_for_distances(self, address_1: str, address_2: str):
+        """
+        Send ranging request to two anchors
+        """
+        message = address_1 + address_2
+        self.debug("Sending to: " + address_1 + " and to: " + address_2, 3)
+        try:
+            self.ble_device.char_write(self.write_characteristic, bytes(message, 'utf-8'))
+        except KeyError:
+            self.debug("Write error. Probably UUID not found", 1)
+        except:
+            self.debug("Unknown BLE error", 2)
+            raise ConnectionError
+        
 
-    def read_anwser(self) -> UwbData:
+    @DeprecationWarning
+    def read_anwser_ble(self) -> UwbData:
         """
         Read the last recived distance
         """
         try:
-            raw_anwser = self.device.char_read(self.read_characteristic)
+            # t1=time.time()
+            raw_anwser = self.ble_device.char_read(self.read_characteristic)
+            # t2=time.time()
+            # self.debug(f"Elapsed time in {self.read_anwser.__name__}: {str(t1 - t2)}", 2)
+
         except:
             self.debug("Unknown BLE error", 2)
             raise ConnectionError
@@ -119,6 +159,14 @@ class UwbBluetoothConnection:
             raise ConnectionError
         return UwbData.create_UWB_data(anwser)
     
+    def read_anwser(self) -> UwbDataPair:
+        try:
+            line = str(self.serial_device.readline(), encoding="ASCII")
+            # todo: READ NEW MESSAGE FORMAT
+        except SerialException:
+            self.debug("Serial error during read.", 1)
+            raise ConnectionError
+
     def read_uwb_data(self, address: str) -> UwbData:
         """
         Method provides distance to anchor that
@@ -131,8 +179,13 @@ class UwbBluetoothConnection:
             - UwbIncorrectData if tag is not avaliable
         """
         try:
+            # t_ask=time.time()
             self.ask_for_distance(address)
+            # t__read = time.time()
+            # self.debug(f"Elapsed time in {self.ask_for_distance.__name__}: {str(t__read - t_ask)}", 2)
             uwb_data = self.read_anwser()
+            # t_after = time.time()
+            # self.debug(f"Elapsed time in {self.read_anwser.__name__}: {str(t_after - t__read)}", 2)
         except (ConnectionError, UwbDataError):
             self.debug("Connection failed", 2)
             self.restart()
@@ -140,16 +193,25 @@ class UwbBluetoothConnection:
         if address != uwb_data.tag_address:
             self.debug("Old data or wrong tag anwsered.", 3)
             raise UwbIncorrectData
-        elif uwb_data.distance is int:
-            self.debug("!!!! Got distance as an int. This error is not handled !!!!", 1)
+        elif uwb_data.tag_address is int:
+            self.debug("!!!! Got address as an int. This error is not handled !!!!", 1)
             raise ConnectionError
         else:
             return uwb_data
 
 
     def disconnect(self):
-        self.device.disconnect()
+        #self.ble_device.disconnect()
+        #self.serial_device.close()
+        pass
 
     def restart(self):
         self.disconnect()
+        serial_address = self.settings.get_value("UWB_SERIAL_ADDRESS")
+        try:
+            serial_test = Serial(serial_address)
+            reset_commands = ["--port", serial_address, "run"]
+            esptool.main(reset_commands)
+        except SerialException:
+            self.debug("Serial connection lost!", 1)
         self.connect()
