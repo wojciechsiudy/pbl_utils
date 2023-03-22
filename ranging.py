@@ -32,6 +32,9 @@ class UwbData:
     def create_UWB_data(data: str = ""):
         """
         Method converting raw UWB data to UwbData object
+        
+        WARNING!
+        this method uses single-anchor format from spgh-2.0 or less
         """
         data_array = data.split("|")
         if len(data_array) < 2:
@@ -48,6 +51,18 @@ class UwbDataPair:
     def __init__(self, nearest: UwbData, second: UwbData):
         self.nearest = nearest
         self.second = nearest
+
+    @staticmethod
+    def create_UWB_data_pair(data: str = ""):
+        """
+        Method converting raw UWB data to UwbDataPair object
+        """
+        datas = data.split("_")
+        if len(datas) < 2:
+            raise UwbDataError
+        first_uwb = UwbData.create_UWB_data(datas[0])
+        second_uwb = UwbData.create_UWB_data(datas[1])
+        return UwbDataPair(first_uwb, second_uwb)
 
 
 class UwbConnection:
@@ -70,7 +85,8 @@ class UwbConnection:
         self.debug("Lanuching BLE device...", 2)
         try:
             self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
-            self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"))
+            self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"), 
+                                        baudrate=115200)
         except SerialException:
             self.debug("Serial error!", 1)
         except:
@@ -139,7 +155,7 @@ class UwbConnection:
     @DeprecationWarning
     def read_anwser_ble(self) -> UwbData:
         """
-        Read the last recived distance
+        Read the last recived distance via BLE
         """
         try:
             # t1=time.time()
@@ -159,13 +175,19 @@ class UwbConnection:
             raise ConnectionError
         return UwbData.create_UWB_data(anwser)
     
-    def read_anwser(self) -> UwbDataPair:
+    def read_anwser_serial(self) -> UwbDataPair:
+        """
+        Read the last recived distance via serial
+        """
         try:
             line = str(self.serial_device.readline(), encoding="ASCII")
-            # todo: READ NEW MESSAGE FORMAT
+            return UwbDataPair.create_UWB_data_pair(line)
         except SerialException:
             self.debug("Serial error during read.", 1)
             raise ConnectionError
+        except UwbDataError:
+            self.debug("Wrong data recived. Ignoring error.", 2)
+            pass
 
     def read_uwb_data(self, address: str) -> UwbData:
         """
@@ -183,7 +205,7 @@ class UwbConnection:
             self.ask_for_distance(address)
             # t__read = time.time()
             # self.debug(f"Elapsed time in {self.ask_for_distance.__name__}: {str(t__read - t_ask)}", 2)
-            uwb_data = self.read_anwser()
+            uwb_data = self.read_anwser_serial()
             # t_after = time.time()
             # self.debug(f"Elapsed time in {self.read_anwser.__name__}: {str(t_after - t__read)}", 2)
         except (ConnectionError, UwbDataError):
