@@ -114,7 +114,7 @@ def gps_data_to_point(data):
     return Point(lat, long)
 
 
-def get_position():
+def get_gps_position():
     """
     Reads point from GPS device.
     """

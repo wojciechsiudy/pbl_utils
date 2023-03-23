@@ -8,7 +8,8 @@ class UwbConstants:
             "DELAY_WRITE_CHARACTERISTIC_UUID" : "dbeea21d-446e-436c-97b0-0b450b615297",
             "UWB_SERIAL_ADDRESS": "/dev/UWB",
             "GPS_SERIAL_ADDRESS": "/dev/GPS",
-            "MAX_RANGE_OFFSET_RATIO": "1.15"
+            "MAX_RANGE_OFFSET_RATIO": "1.15",
+            "DEBUG_LEVEL": "3"
         }
 
     def get_value(self, attribute_name):
