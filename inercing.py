@@ -15,6 +15,10 @@ class InercialPoint:
         self.z = z
 
 class AhrsData(StampedData):
+    def __init__(self):
+        self.accel = InercialPoint()
+        self.gyro = InercialPoint()
+        self.mag = InercialPoint()
     def __init__(self,
                  accel: InercialPoint,
                  gyro: InercialPoint,
