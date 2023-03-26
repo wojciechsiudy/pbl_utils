@@ -3,6 +3,7 @@ import esptool
 import time
 from serial import Serial, SerialException
 from .uwb_constants import UwbConstants
+from .misc import StampedData
 
 UWB_ERROR_MESSAGE = "Hello Wojtek"
 UWB_TIMEOUT_MESSAGE = "Timed out!"
@@ -19,7 +20,7 @@ class UwbFatalError(Exception):
 class UwbIncorrectData(Exception):
     pass
 
-class UwbData:
+class UwbData(StampedData):
     """
     Data returned from UWB device
     """

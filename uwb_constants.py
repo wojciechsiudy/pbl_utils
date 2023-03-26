@@ -9,7 +9,8 @@ class UwbConstants:
             "UWB_SERIAL_ADDRESS": "/dev/UWB",
             "GPS_SERIAL_ADDRESS": "/dev/GPS",
             "MAX_RANGE_OFFSET_RATIO": "1.15",
-            "DEBUG_LEVEL": "3"
+            "DEBUG_LEVEL": "3",
+            "MAX_DATA_AGE": "5"
         }
 
     def get_value(self, attribute_name):

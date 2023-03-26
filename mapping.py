@@ -4,12 +4,13 @@ from geopy.distance import geodesic
 from pyproj import Transformer
 
 from .uwb_constants import UwbConstants
+from .misc import StampedData
 
 POSITION_RADIUS_M : float = float('inf')
 MAX_UWB_OFFSET_FACTOR: float = 1.15
 
 
-class Point:
+class Point(StampedData):
     """
     Class holding data about point on Earth surface
     """
