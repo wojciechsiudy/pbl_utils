@@ -8,15 +8,14 @@ class StampedData:
     """
     def __init__(self):
         self.time_stamp = time()
+        self.max_age = UwbConstants().get_value("MAX_DATA_AGE")
 
     def validate_age(self):
         """
         Function validating if recived data is not outdated
         """
-        settings = UwbConstants()
-        max_age = settings.get_value("MAX_DATA_AGE")
         now = time()
-        if now - self.time_stamp > max_age:
+        if now - self.time_stamp > self.max_age:
             return False
         else:
             return True
