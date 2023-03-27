@@ -4,7 +4,7 @@ import time
 from serial import Serial, SerialException
 from .uwb_constants import UwbConstants
 from .misc import StampedData
-
+from multiprocessing import Process, Queue
 UWB_ERROR_MESSAGE = "Hello Wojtek"
 UWB_TIMEOUT_MESSAGE = "Timed out!"
 
@@ -30,7 +30,9 @@ class UwbData(StampedData):
         self.distance = distance
         self.power = power
         self.valid = valid
-
+    def __repr__(self) -> str:
+        repr=str(self.tag_address)+' '+str(self.distance)+' '+str(self.power)+' ' + str(self.valid)
+        return repr
     @staticmethod
     def create_UWB_data(data: str = ""):
         """
@@ -56,7 +58,9 @@ class UwbDataPair:
     def __init__(self, nearest: UwbData, second: UwbData):
         self.nearest = nearest
         self.second = second
-
+    def __repr__(self) -> str:
+        repr=f"Nearest: {self.nearest.__repr__()}, Second: {self.second.__repr__()}"
+        return repr
     @staticmethod
     def create_UWB_data_pair(data: str = ""):
         """
@@ -88,6 +92,7 @@ class UwbConnection:
         self.set_initial_values()
         self.read_settings_from_json()
         self.debug("Lanuching BLE device...", 2)
+        self.measures_queue = Queue(maxsize=10)
         try:
             self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
             self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"), 
@@ -96,20 +101,28 @@ class UwbConnection:
             self.debug("Serial error!", 1)
         except:
             self.debug("Bluetooth error. Device not found! Adress used: " + self.uwb_mac_adress, 0)
+            # TODO: try connection again
             raise UwbFatalError
-        
+        self._set_processes()
+
+    def _set_processes(self):
+        self.process_reader = Process(target=_uwb_anwser_reader_process, 
+                               args=(self.serial_device, self.measures_queue,))
+    def begin_process(self):
+        self.process_reader.start()        
 
     def set_initial_values(self):
         self.last_address_nearest = "00:00"
         self.last_address_second = "00:00"
-
+        self.last_reader_message=UwbDataPair(UwbData(),UwbData())
+        
     def read_settings_from_json(self):
         self.settings = UwbConstants()
         self.uwb_mac_adress = self.settings.get_value("DEVICE_ADDRESS")
         self.service_uuid = self.settings.get_value("SERVICE_UUID")
         self.read_characteristic = self.settings.get_value("READ_CHARACTERISTIC_UUID")
         self.write_characteristic = self.settings.get_value("WRITE_CHARACTERISTIC_UUID")
-        self.debug_level = self.settings.get_value("DEBUG_LEVEL")
+        self.debug_level = int(self.settings.get_value("DEBUG_LEVEL"))
         self.debug("Settings loaded!", 3)
 
     def debug(self, message: str, level=3):
@@ -146,15 +159,17 @@ class UwbConnection:
         except:
             self.debug("Unknown BLE error", 2)
             raise ConnectionError
-    
-    def read_anwser_serial(self) -> UwbDataPair:
+
+    def get_last_UwbDataPair(self) -> UwbDataPair:
         """
         Read the last recived distance via serial
         """
         try:
-            line = str(self.serial_device.readline(), encoding="ASCII").strip()
-            print(line)
-            return UwbDataPair.create_UWB_data_pair(line)
+            if self.measures_queue.qsize() > 0:
+                self.last_reader_message = UwbDataPair\
+                    .create_UWB_data_pair(self.measures_queue.get())
+            #print(self.last_reader_message)
+            return self.last_reader_message
         except SerialException:
             self.debug("Serial error during read.", 1)
             raise ConnectionError
@@ -178,7 +193,7 @@ class UwbConnection:
             self.ask_for_distance(address)
             # t__read = time.time()
             # self.debug(f"Elapsed time in {self.ask_for_distance.__name__}: {str(t__read - t_ask)}", 2)
-            uwb_data = self.read_anwser_serial()
+            uwb_data = self.get_last_UwbDataPair()
             # t_after = time.time()
             # self.debug(f"Elapsed time in {self.read_anwser.__name__}: {str(t_after - t__read)}", 2)
         except (ConnectionError, UwbDataError):
@@ -209,3 +224,12 @@ class UwbConnection:
         except SerialException:
             self.debug("Serial connection lost!", 1)
         self.connect()
+
+
+def _uwb_anwser_reader_process(serial_device:Serial,queue:Queue):
+    while True:
+        if queue.qsize() > 5:
+                queue.get()
+        data = str(serial_device.readline(), encoding="ASCII").strip()
+        print("PUT")
+        queue.put(data)
