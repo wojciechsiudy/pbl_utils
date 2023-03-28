@@ -2,7 +2,7 @@ import math
 from serial import Serial
 from geopy.distance import geodesic
 from pyproj import Transformer
-
+from multiprocessing import Process, Queue
 from .uwb_constants import UwbConstants
 from .pointsDB import getPoints
 from .misc import StampedData
@@ -34,7 +34,20 @@ class GpsData(StampedData):
         super().__init__()
         self.point = Point(x, y)
 
-
+class GPSConnection():
+    def __init__(self) -> None:
+        self.settings = UwbConstants()
+        self.gps_serial = Serial(self.settings.get_value("GPS_SERIAL_ADDRESS"))
+        self.measures_queue = Queue(maxsize=10)
+        self.last_value=GpsData(0,0)
+    def _set_Process(self):
+        self.process = Process(target=get_gps_position, args=(self.gps_serial,self.measures_queue,))
+    def begin(self):
+        self.process.start()
+    def get_last_value(self):
+        if self.measures_queue.qsize() > 0:
+            self.last_value = self.measures_queue.get()
+        return self.last_value
 def select_points(gps_position: Point) -> tuple(Point, Point):
     """
     Function asking database for pair of the nearest points
@@ -143,21 +156,22 @@ def gps_data_to_point(data):
     return Point(lat, long)
 
 
-def get_gps_position():
+def get_gps_position(gps_serial:Serial, queue: Queue)->Point:
     """
     Reads point from GPS device.
 
     TODO
     based on this method create class with processes as was done with the rest
     """
-    settings = UwbConstants()
-    gps_serial = Serial(settings.get_value("GPS_SERIAL_ADDRESS"))
     while (True):
         try:
             line = str(gps_serial.readline(), encoding="ASCII")
             if "GPGGA" in line: # read line containig position
                 data = line.split(',')
-                if (int(data[7]) > 0):  # enough satellites
-                    return (gps_data_to_point(data))
+                if (int(data[7]) < 0):  
+                    continue# not enough satellites
+                if queue.qsize()>6:
+                    queue.get()
+                queue.put(gps_data_to_point(data))
         except(UnicodeDecodeError):
             pass
