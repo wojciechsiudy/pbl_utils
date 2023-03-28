@@ -2,6 +2,8 @@ from .mapping import GpsData, Point, GPSConnection, select_points, calculate_pos
 from .ranging import UwbConnection, UwbDataPair
 from .inercing import AhrsConnection, AhrsData
 
+import signal
+
 class SpauData:
     def __init__(self,
                  uwb: UwbDataPair,
@@ -46,6 +48,7 @@ class Spausync:
         self.uwb_connection = UwbConnection()
         self.ahrs_connection = AhrsConnection()
         self.gps_connection = GPSConnection(mock = True)
+        signal.signal(signal.SIGINT,self.end)
 
     def launch(self):
         """
@@ -70,7 +73,8 @@ class Spausync:
         )
         data.calculate(points_to_talk)
         return data
-
+    def end(self):
+        print("We requested for an end")
 
 
     
