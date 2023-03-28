@@ -4,13 +4,14 @@ from geopy.distance import geodesic
 from pyproj import Transformer
 
 from .uwb_constants import UwbConstants
+from .pointsDB import getPoints
 from .misc import StampedData
 
 POSITION_RADIUS_M : float = float('inf')
 MAX_UWB_OFFSET_FACTOR: float = 1.15
 
 
-class Point(StampedData):
+class Point():
     """
     Class holding data about point on Earth surface
     """
@@ -25,6 +26,31 @@ class Point(StampedData):
             return False
         else:
             return True
+
+class GpsData(StampedData):
+    def __init__(self,
+                 x: float,
+                 y: float):
+        super().__init__()
+        self.point = Point(x, y)
+
+
+def select_points(gps_position: Point) -> tuple(Point, Point):
+    """
+    Function asking database for pair of the nearest points
+    based on GPS position
+    """
+    points_around = []
+    for point in getPoints(1):
+        distance = get_distance(gps_position, point)
+        print(point.address, distance)
+        if distance < float('inf'):
+            points_around.append((point, get_distance(gps_position, point)))
+    points_around.sort(key=lambda x: x[1])
+    nearest = points_around[0][0]
+    second = points_around[1][0]
+    return (nearest, second)
+
 
 def get_distance(a:Point, b:Point) -> float:
     pa = (a.x, a.y)
@@ -96,6 +122,7 @@ def gps_data_to_point(data):
     Converts GPS sentence in NMEA-2000 standard
     to instance of Point class
     """
+    # DDMM.MMMM
     lat_raw = data[2]
     lat_deg = float(lat_raw[0:2])
     lat_min = float(lat_raw[2:])
@@ -104,6 +131,7 @@ def gps_data_to_point(data):
     if sign_lat == "S":
         lat *= -1
 
+    # DDDMM.MMMM
     long_raw = data[4]
     long_deg = float(long_raw[0:3])
     long_min = float(long_raw[3:])
@@ -118,6 +146,9 @@ def gps_data_to_point(data):
 def get_gps_position():
     """
     Reads point from GPS device.
+
+    TODO
+    based on this method create class with processes as was done with the rest
     """
     settings = UwbConstants()
     gps_serial = Serial(settings.get_value("GPS_SERIAL_ADDRESS"))

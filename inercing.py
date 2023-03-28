@@ -22,6 +22,7 @@ class AhrsData(StampedData):
                  accel = InercialPoint(),
                  gyro = InercialPoint(),
                  mag = InercialPoint()):
+        super().__init__()
         self.accel = accel
         self.gyro = gyro
         self.mag = mag

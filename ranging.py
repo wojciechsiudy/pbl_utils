@@ -26,13 +26,19 @@ class UwbData(StampedData):
     """
     def __init__(self, tag_adress:str = "none", distance:float = 0.0, 
                 power:float = 0.0, valid:bool = True):
+        super().__init__()
         self.tag_address = tag_adress
         self.distance = distance
         self.power = power
         self.valid = valid
+
     def __repr__(self) -> str:
-        repr=str(self.tag_address)+' '+str(self.distance)+' '+str(self.power)+' ' + str(self.valid)
+        repr =  str(self.tag_address) + ' '
+        repr += str(self.distance) + ' '
+        repr += str(self.power) + ' '
+        repr += str(self.valid)
         return repr
+
     @staticmethod
     def create_UWB_data(data: str = ""):
         """
@@ -50,6 +56,7 @@ class UwbData(StampedData):
         distance = float(data_array[1])
         power = float(data_array[2])
         return UwbData(tag_address, distance, power)
+
 
 class UwbDataPair:
     """
@@ -226,10 +233,9 @@ class UwbConnection:
         self.connect()
 
 
-def _uwb_anwser_reader_process(serial_device:Serial,queue:Queue):
+def _uwb_anwser_reader_process(serial_device: Serial, queue: Queue):
     while True:
         if queue.qsize() > 5:
                 queue.get()
         data = str(serial_device.readline(), encoding="ASCII").strip()
-        print("PUT")
         queue.put(data)
