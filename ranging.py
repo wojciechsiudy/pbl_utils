@@ -131,7 +131,8 @@ class UwbConnection:
         self.last_address_nearest = "00:00"
         self.last_address_second = "00:00"
         self.last_reader_message=UwbDataPair(UwbData(),UwbData())
-        
+    def end(self):
+        self.process_reader.terminate()    
     def read_settings_from_json(self):
         self.settings = UwbConstants()
         self.uwb_mac_adress = self.settings.get_value("DEVICE_ADDRESS")

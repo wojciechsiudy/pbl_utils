@@ -55,7 +55,7 @@ class AhrsConnection:
         self.process = Process(target=_ahrs_Process, args=(self.ahrs_serial, self.measures_queue,))
 
     def end(self):
-        self._set_Process()
+        self.process.terminate()
         
     def get_last_value(self):
         if self.measures_queue.qsize() > 0:

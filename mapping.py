@@ -63,7 +63,8 @@ class GPSConnection():
             self.gps_serial = Serial(self.settings.get_value("GPS_SERIAL_ADDRESS"))
             self.process = Process(target = get_gps_position, args = (self.gps_serial, self.measures_queue, self.mocking_timer))
 
-
+    def end(self):
+        self.process.terminate()
     def begin(self):
         self.process.start()
 

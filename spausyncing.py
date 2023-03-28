@@ -80,6 +80,9 @@ class Spausync:
         Handle CTRL+C signal.
         """
         print("We requested for an end.")
+        self.ahrs_connection.end()
+        self.uwb_connection.end()
+        self.gps_connection.end()
         sys.exit(0)
 
 
