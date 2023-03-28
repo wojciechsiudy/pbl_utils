@@ -3,6 +3,7 @@ from .ranging import UwbConnection, UwbDataPair
 from .inercing import AhrsConnection, AhrsData
 
 import signal
+import sys
 
 class SpauData:
     def __init__(self,
@@ -73,8 +74,13 @@ class Spausync:
         )
         data.calculate(points_to_talk)
         return data
-    def end(self):
-        print("We requested for an end")
+
+    def end(self, sig, frame):
+        """
+        Handle CTRL+C signal.
+        """
+        print("We requested for an end.")
+        sys.exit(0)
 
 
     
