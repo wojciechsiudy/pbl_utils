@@ -36,7 +36,10 @@ class UwbData(StampedData):
         repr =  str(self.tag_address) + ' '
         repr += str(self.distance) + ' '
         repr += str(self.power) + ' '
-        repr += str(self.valid)
+        if self.valid:
+            repr += "valid"
+        else:
+            repr += "invalid"
         return repr
 
     @staticmethod
@@ -48,13 +51,16 @@ class UwbData(StampedData):
         this method uses single-anchor format from spgh-2.0 or less
         """
         data_array = data.split("|")
-        if len(data_array) < 2:
+        try:
+            if len(data_array) < 2:
+                raise UwbDataError
+            if data_array[1] == UWB_TIMEOUT_MESSAGE:
+                return UwbData(valid = False)
+            tag_address = data_array[0][:5]
+            distance = float(data_array[1])
+            power = float(data_array[2])
+        except ValueError:
             raise UwbDataError
-        if data_array[1] == UWB_TIMEOUT_MESSAGE:
-            return UwbData(valid = False)
-        tag_address = data_array[0][:5]
-        distance = float(data_array[1])
-        power = float(data_array[2])
         return UwbData(tag_address, distance, power)
 
 
@@ -65,9 +71,11 @@ class UwbDataPair:
     def __init__(self, nearest: UwbData, second: UwbData):
         self.nearest = nearest
         self.second = second
+
     def __repr__(self) -> str:
-        repr=f"Nearest: {self.nearest.__repr__()}, Second: {self.second.__repr__()}"
+        repr=f"Nearest: {self.nearest.__repr__()}\n Second: {self.second.__repr__()}\n"
         return repr
+    
     @staticmethod
     def create_UWB_data_pair(data: str = ""):
         """
@@ -111,11 +119,12 @@ class UwbConnection:
             # TODO: try connection again
             raise UwbFatalError
         self._set_processes()
+        self._begin_process()
 
     def _set_processes(self):
-        self.process_reader = Process(target=_uwb_anwser_reader_process, 
+        self.process_reader = Process(target=_uwb_anwser_serial_reader, 
                                args=(self.serial_device, self.measures_queue,))
-    def begin_process(self):
+    def _begin_process(self):
         self.process_reader.start()        
 
     def set_initial_values(self):
@@ -168,23 +177,16 @@ class UwbConnection:
             raise ConnectionError
 
     def get_last_UwbDataPair(self) -> UwbDataPair:
-        """
-        Read the last recived distance via serial
-        """
         try:
             if self.measures_queue.qsize() > 0:
                 self.last_reader_message = UwbDataPair\
                     .create_UWB_data_pair(self.measures_queue.get())
-            #print(self.last_reader_message)
             return self.last_reader_message
-        except SerialException:
-            self.debug("Serial error during read.", 1)
-            raise ConnectionError
         except UwbDataError:
-            self.debug("Wrong data recived. Ignoring error.", 2)
+            self.debug("Wrong data recived. Probably message standard has changed.", 2)
             pass
 
-    def read_uwb_data(self, address: str) -> UwbData:
+    def read_uwb_data(self, address: str) -> UwbDataPair:
         """
         Method provides distance to anchor that
         address is passed
@@ -233,9 +235,18 @@ class UwbConnection:
         self.connect()
 
 
-def _uwb_anwser_reader_process(serial_device: Serial, queue: Queue):
+def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue):
+    """
+    Read the last recived distance via serial
+
+    Raw data is returnetd
+    """
     while True:
         if queue.qsize() > 5:
                 queue.get()
-        data = str(serial_device.readline(), encoding="ASCII").strip()
-        queue.put(data)
+        try:
+            data = str(serial_device.readline(), encoding="ASCII").strip()
+            queue.put(data)
+        except SerialException:
+            print("Serial error during read.")
+        

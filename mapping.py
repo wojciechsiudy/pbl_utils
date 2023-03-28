@@ -1,11 +1,15 @@
 import math
+import time
+import json
 from serial import Serial
 from geopy.distance import geodesic
 from pyproj import Transformer
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Value
+
 from .uwb_constants import UwbConstants
-from .pointsDB import getPoints
+#from .pointsDB import getPoints
 from .misc import StampedData
+from .ranging import UwbDataPair
 
 POSITION_RADIUS_M : float = float('inf')
 MAX_UWB_OFFSET_FACTOR: float = 1.15
@@ -20,6 +24,12 @@ class Point():
         self.y = y
         self.address = address
 
+    def __repr__(self) -> str:
+        val =  "x: "    + str(self.x)
+        val += " y: "   + str(self.y)
+        val += " adr: " + str(self.address)
+        return val
+
     def is_around(self, another):
         distance = get_distance(self, another)
         if (distance > POSITION_RADIUS_M):
@@ -27,28 +37,43 @@ class Point():
         else:
             return True
 
-class GpsData(StampedData):
-    def __init__(self,
-                 x: float,
-                 y: float):
-        super().__init__()
-        self.point = Point(x, y)
+class GpsData(Point, StampedData):
+    def __init__(self, x: float, y: float, address: str = "TAG"):
+        super().__init__(x, y, address)
+        StampedData.__init__(self)
+
+    def __repr__(self):
+        return str(self.x) + " " + str(self.y)
 
 class GPSConnection():
-    def __init__(self) -> None:
+    """
+    Class holding GPS connection
+
+    If mock parameter is set True no serial device is
+    used - simulation in run instead
+    """
+    def __init__(self, mock = False) -> None:
         self.settings = UwbConstants()
-        self.gps_serial = Serial(self.settings.get_value("GPS_SERIAL_ADDRESS"))
-        self.measures_queue = Queue(maxsize=10)
-        self.last_value=GpsData(0,0)
-    def _set_Process(self):
-        self.process = Process(target=get_gps_position, args=(self.gps_serial,self.measures_queue,))
+        self.measures_queue = Queue(maxsize = 10)
+        self.last_value = GpsData(0.0, 0.0)
+        if mock:
+           self.mocking_timer = Value('i', 0)
+           self.process = Process(target = mock_gps_position, args = (self.measures_queue, self.mocking_timer)) 
+        else:
+            self.gps_serial = Serial(self.settings.get_value("GPS_SERIAL_ADDRESS"))
+            self.process = Process(target = get_gps_position, args = (self.gps_serial, self.measures_queue, self.mocking_timer))
+
+
     def begin(self):
         self.process.start()
+
     def get_last_value(self):
         if self.measures_queue.qsize() > 0:
             self.last_value = self.measures_queue.get()
         return self.last_value
-def select_points(gps_position: Point) -> tuple(Point, Point):
+    
+
+def select_points(gps_position: Point) -> tuple:
     """
     Function asking database for pair of the nearest points
     based on GPS position
@@ -56,7 +81,6 @@ def select_points(gps_position: Point) -> tuple(Point, Point):
     points_around = []
     for point in getPoints(1):
         distance = get_distance(gps_position, point)
-        print(point.address, distance)
         if distance < float('inf'):
             points_around.append((point, get_distance(gps_position, point)))
     points_around.sort(key=lambda x: x[1])
@@ -70,9 +94,7 @@ def get_distance(a:Point, b:Point) -> float:
     pb = (b.x, b.y)
     return geodesic(pa, pb).m
 
-def calculate_position(anchor_A: Point, anchor_B: Point, ctrl_anchor: Point, 
-                distance_a: float, distance_b: float, 
-                power_a: float, power_b: float):
+def calculate_position(gps_data: GpsData, uwb_data: UwbDataPair, points_pair: tuple):
     """
     Function calculating position based on:
         - positions     of anchor_A and anchor_B
@@ -82,6 +104,19 @@ def calculate_position(anchor_A: Point, anchor_B: Point, ctrl_anchor: Point,
 
     Using WGS-84 ellipsoid and EPSG2177
     """
+    # expand parameters
+    try:
+        anchor_A        = points_pair[0]
+        anchor_B        = points_pair[1]
+        ctrl_anchor     = gps_data 
+        distance_a      = uwb_data.nearest.distance
+        distance_b      = uwb_data.second.distance 
+        power_a         = uwb_data.nearest.power
+        power_b         = uwb_data.second.power
+    except AttributeError as err:
+        return Point(0.0, 0.0, "-1 bad arguments")
+
+    # transform points
     transformer1 = Transformer.from_crs("EPSG:4326", "EPSG:2177")        #transform from WGS84 to PL-2000
     transformer2 = Transformer.from_crs("EPSG:2177", "EPSG:4326")        #transform from PL-2000 to WGS84
     anch_xy_A = transformer1.transform(anchor_A.x, anchor_A.y)
@@ -100,13 +135,13 @@ def calculate_position(anchor_A: Point, anchor_B: Point, ctrl_anchor: Point,
             elif power_a<power_b:
                 distance_a *= scale_offset_factor
     if d > distance_a + distance_b:
-        return Point(0, 0)
+        return Point(0, 0, "-2 non-intersecting")
     # One circle within other
     if d < abs(distance_a - distance_b):
-        return Point(0, 0)
+        return Point(0, 0, "-3 one circle within other")
     # coincident circles
     if d == 0 and distance_a == distance_b:
-        return Point(0, 0)
+        return Point(0, 0, "-4 coincident circles")
     else:
         a = (distance_a ** 2 - distance_b ** 2 + d ** 2) / (2 * d)
         h = math.sqrt(distance_a ** 2 - a ** 2)
@@ -130,7 +165,7 @@ def calculate_position(anchor_A: Point, anchor_B: Point, ctrl_anchor: Point,
             position = transformer2.transform(x4, y4)
             return Point(position[0], position[1])
 
-def gps_data_to_point(data):
+def nmea_sentence_to_gps_point(data):
     """
     Converts GPS sentence in NMEA-2000 standard
     to instance of Point class
@@ -153,15 +188,12 @@ def gps_data_to_point(data):
     if long_sign == "W":
         long *= -1
 
-    return Point(lat, long)
+    return GpsData(lat, long)
 
 
-def get_gps_position(gps_serial:Serial, queue: Queue)->Point:
+def get_gps_position(gps_serial: Serial, queue: Queue) -> Point:
     """
     Reads point from GPS device.
-
-    TODO
-    based on this method create class with processes as was done with the rest
     """
     while (True):
         try:
@@ -172,6 +204,39 @@ def get_gps_position(gps_serial:Serial, queue: Queue)->Point:
                     continue# not enough satellites
                 if queue.qsize()>6:
                     queue.get()
-                queue.put(gps_data_to_point(data))
+                queue.put(nmea_sentence_to_gps_point(data))
         except(UnicodeDecodeError):
             pass
+
+def mock_gps_position(queue: Queue, timer) -> Point:
+    """
+    Simulates GPS signal
+    """
+    while (True):
+            point = GpsData(50.0, 18.0)
+            point.x += timer.value * 0.1
+            timer.value += 1
+            if timer.value > 30:
+                timer.value = 0
+            queue.put(point)
+            time.sleep(0.15)
+
+def read_json_file():
+    f = open("/home/wojtek/pbl/pbl-ford-ka/GPSdata.json")
+    return json.load(f)
+
+def load_points_from_json():
+    points = []
+    for line in read_json_file():
+        points.append(Point(line['x'], line['y'], line ['address']))
+    return points
+
+def getPoints(subset):
+    if subset == 0:
+        return [
+            Point(50.290138, 18.677277, "AA:BB"),
+            Point(50.289368, 18.678203, "CC:DD")]
+    elif subset == 1:
+        return load_points_from_json()
+    else:
+        return None
