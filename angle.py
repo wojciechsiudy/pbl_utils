@@ -11,7 +11,7 @@ def angle_calculation(distance_l: float, distance_r: float, use_length: bool):
     cross_length = 1.098
     cross_width = 0.95
     cross_used_distance= 0.0
-    scale_offset_factor = 1.0
+    scale_offset_factor = 1.005
 
     if(use_length):
         cross_used_distance = cross_length
@@ -34,12 +34,5 @@ def angle_calculation(distance_l: float, distance_r: float, use_length: bool):
     angle = math.degrees(angle) #wynik w stopniach
     return angle
 
-print(angle_calculation(1.098,1.098,1))
-print(angle_calculation(1.098,1.098,0))
-print(angle_calculation(130,130,0))
-print(angle_calculation(130,129,0))
-print(angle_calculation(80,80,0))
-print(angle_calculation(50,50,0))
-print(angle_calculation(8,8,0))
-print(angle_calculation(5,5,0))
+
 

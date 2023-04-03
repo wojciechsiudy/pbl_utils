@@ -123,7 +123,7 @@ def calculate_position(gps_data: GpsData, uwb_data: UwbDataPair, points_pair: tu
     anch_xy_A = transformer1.transform(anchor_A.x, anchor_A.y)
     anch_xy_B = transformer1.transform(anchor_B.x, anchor_B.y)
     ctrlanch_xy = transformer1.transform(ctrl_anchor.x, ctrl_anchor.y)
-    scale_offset_factor = 1.0
+    scale_offset_factor = 1.005
     
     d = math.sqrt((anch_xy_B[0] - anch_xy_A[0]) ** 2 + (anch_xy_B[1] - anch_xy_A[1]) ** 2)
     
