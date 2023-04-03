@@ -1,2 +1,3 @@
 # pbl_utils
-Set of python utilities to deal with PBL
+Tool synchronizing data measuring instruments of autonomous vehicle.
+Position is caluclated using UWB tag on a car and at least two anchors that have known position.
