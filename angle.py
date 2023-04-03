@@ -20,15 +20,26 @@ def angle_calculation(distance_l: float, distance_r: float, use_length: bool):
     if(distance_l + cross_used_distance <= distance_r or distance_r + cross_used_distance <= distance_l):
         while(scale_offset_factor < MAX_UWB_OFFSET_FACTOR and (distance_l + cross_used_distance <= distance_r 
                                                                or distance_r + cross_used_distance <= distance_l)):
-            scale_offset_factor += 1.005
             if(distance_l + cross_used_distance <= distance_r):
                 distance_l*=scale_offset_factor
+                print(distance_l)
             if(distance_r + cross_used_distance <= distance_l):
                 distance_r*=scale_offset_factor
+                print(distance_r)
+            scale_offset_factor += 0.005
     if(distance_l + cross_used_distance <= distance_r or distance_r + cross_used_distance <= distance_l):
         return 420.0
     cos_a = (-cross_used_distance**2+distance_l**2+distance_r**2)/(2*distance_l*distance_r)
     angle = math.acos(cos_a) #wynik w radianach
-    #angle = math.degrees(angle) #wynik w stopniach
+    angle = math.degrees(angle) #wynik w stopniach
     return angle
+
+print(angle_calculation(1.098,1.098,1))
+print(angle_calculation(1.098,1.098,0))
+print(angle_calculation(130,130,0))
+print(angle_calculation(130,129,0))
+print(angle_calculation(80,80,0))
+print(angle_calculation(50,50,0))
+print(angle_calculation(8,8,0))
+print(angle_calculation(5,5,0))
 
