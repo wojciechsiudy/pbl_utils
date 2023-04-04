@@ -8,7 +8,6 @@ def angle_calculation(distance_l: float, distance_r: float, cross_used_distance:
     distance_r -distance to right module
     cross_used_distance - distance on the cross
     """
-    cross_used_distance= 0.0
     scale_offset_factor = 1.005
 
 
@@ -18,10 +17,8 @@ def angle_calculation(distance_l: float, distance_r: float, cross_used_distance:
                                                                or distance_r + cross_used_distance <= distance_l)):
             if(distance_l + cross_used_distance <= distance_r):
                 distance_l*=scale_offset_factor
-                print(distance_l)
             if(distance_r + cross_used_distance <= distance_l):
                 distance_r*=scale_offset_factor
-                print(distance_r)
             scale_offset_factor += 0.005
         #'''
    
