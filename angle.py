@@ -18,6 +18,7 @@ def angle_calculation(distance_l: float, distance_r: float, use_length: bool):
     else:
         cross_used_distance = cross_width
     if(distance_l + cross_used_distance <= distance_r or distance_r + cross_used_distance <= distance_l):
+        #'''
         while(scale_offset_factor < MAX_UWB_OFFSET_FACTOR and (distance_l + cross_used_distance <= distance_r 
                                                                or distance_r + cross_used_distance <= distance_l)):
             if(distance_l + cross_used_distance <= distance_r):
@@ -27,12 +28,28 @@ def angle_calculation(distance_l: float, distance_r: float, use_length: bool):
                 distance_r*=scale_offset_factor
                 print(distance_r)
             scale_offset_factor += 0.005
+        #'''
+        '''
+        epsilon = abs((max(distance_r,distance_l)-min(distance_l,distance_r)-cross_used_distance)/2)
+        print(epsilon)
+        tau1 = max(distance_r,distance_l)/(distance_l+distance_r)
+        tau2 = min(distance_r,distance_l)/(distance_l+distance_r)
+        if(distance_r>distance_l):
+            distance_r = distance_r - epsilon*tau1
+            distance_l = distance_l + epsilon*tau2
+        if(distance_r<distance_l):
+            distance_r = distance_r + epsilon*tau2
+            distance_l = distance_l - epsilon*tau1
+        print(distance_l)
+        print(distance_r)
+        '''        
     if(distance_l + cross_used_distance <= distance_r or distance_r + cross_used_distance <= distance_l):
         return 420.0
     cos_a = (-cross_used_distance**2+distance_l**2+distance_r**2)/(2*distance_l*distance_r)
-    angle = math.acos(cos_a) #wynik w radianach
-    angle = math.degrees(angle) #wynik w stopniach
-    return angle
+    rads = math.acos(cos_a) #wynik w radianach
+    degrees = math.degrees(rads) #wynik w stopniach
+    return (rads, degrees)
 
+print(angle_calculation(130,126,1))
 
 
