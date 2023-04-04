@@ -2,11 +2,11 @@ import math
 
 MAX_UWB_OFFSET_FACTOR: float = 1.15
 
-def angle_calculation(distance_l: float, distance_r: float, cross_used_distance:float):
+def angle_calculation(distance_l: float, distance_r: float, cross_used_distance:float=0.95):
     """
     distance_l -distance to left module
     distance_r -distance to right module
-    use_length - 1 to use cross lenght 0 to use width
+    cross_used_distance - distance on the cross
     """
     cross_used_distance= 0.0
     scale_offset_factor = 1.005
