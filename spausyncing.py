@@ -61,7 +61,7 @@ class Spausync:
         self.gps_connection.begin()
         # the rest is connected via consructors
 
-    def get_all_data(self) -> SpauData:
+    def get_all_data(self) -> SpauData | None:
         """
         Method invoked when final user ask
 
@@ -69,11 +69,15 @@ class Spausync:
         """
         points_to_talk = select_points(self.gps_connection.get_last_value())
         self.uwb_connection.ask_for_distances(points_to_talk[0].address, points_to_talk[1].address)
-        data = SpauData(
-            self.uwb_connection.get_last_UwbDataPair(),
-            self.ahrs_connection.get_last_value(),
-            self.gps_connection.get_last_value()
-        )
+        uwb_data = self.uwb_connection.get_last_UwbDataPair()
+        if uwb_data == None:
+            return None
+        else:
+            data = SpauData(
+                uwb_data,
+                self.ahrs_connection.get_last_value(),
+                self.gps_connection.get_last_value()
+            )
         data.calculate(points_to_talk)
         self.collected_data.append(data)
         return data
@@ -89,6 +93,3 @@ class Spausync:
         with open('data.json', 'w') as outfile:
             json.dump(self.collected_data, outfile)
         sys.exit(0)
-
-
-    

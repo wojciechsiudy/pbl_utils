@@ -115,7 +115,7 @@ class UwbConnection:
         except SerialException:
             self.debug("Serial error!", 1)
         except:
-            self.debug("Bluetooth error. Device not found! Adress used: " + self.uwb_mac_adress, 0)
+            self.debug("Bluetooth error. Device not found! Adress used: " + str(self.uwb_mac_adress), 0)
             # TODO: try connection again
             raise UwbFatalError
         self._set_processes()
@@ -139,7 +139,7 @@ class UwbConnection:
         self.service_uuid = self.settings.get_value("SERVICE_UUID")
         self.read_characteristic = self.settings.get_value("READ_CHARACTERISTIC_UUID")
         self.write_characteristic = self.settings.get_value("WRITE_CHARACTERISTIC_UUID")
-        self.debug_level = int(self.settings.get_value("DEBUG_LEVEL"))
+        self.debug_level = int(self.settings.get_value("DEBUG_LEVEL")) # type: ignore
         self.debug("Settings loaded!", 3)
 
     def debug(self, message: str, level=3):
@@ -168,6 +168,7 @@ class UwbConnection:
         self.last_address_nearest = address_1
         self.last_address_second = address_2
         message = address_1 + address_2
+        open("log.txt", "a").write("\n" + message + "\n")
         self.debug("Sending to: " + address_1 + " and to: " + address_2, 3)
         try:
             self.ble_device.char_write(self.write_characteristic, bytes(message, 'utf-8'))
@@ -177,7 +178,7 @@ class UwbConnection:
             self.debug("Unknown BLE error", 2)
             raise ConnectionError
 
-    def get_last_UwbDataPair(self) -> UwbDataPair:
+    def get_last_UwbDataPair(self) -> UwbDataPair | None:
         try:
             if self.measures_queue.qsize() > 0:
                 self.last_reader_message = UwbDataPair\
@@ -187,37 +188,34 @@ class UwbConnection:
             self.debug("Wrong data recived. Probably message standard has changed.", 2)
             pass
 
-    def read_uwb_data(self, address: str) -> UwbDataPair:
-        """
-        Method provides distance to anchor that
-        address is passed
+    # def read_uwb_data(self, address: str) -> UwbDataPair:
+    #     """
+    #     Method provides distance to anchor that
+    #     address is passed
 
-        When any problem occurs connection is reset,
-        however hard reset via RTS pin is not implemented
-
-        Throws:
-            - UwbIncorrectData if tag is not avaliable
-        """
-        try:
-            # t_ask=time.time()
-            self.ask_for_distance(address)
-            # t__read = time.time()
-            # self.debug(f"Elapsed time in {self.ask_for_distance.__name__}: {str(t__read - t_ask)}", 2)
-            uwb_data = self.get_last_UwbDataPair()
-            # t_after = time.time()
-            # self.debug(f"Elapsed time in {self.read_anwser.__name__}: {str(t_after - t__read)}", 2)
-        except (ConnectionError, UwbDataError):
-            self.debug("Connection failed", 2)
-            self.restart()
-            return 0
-        if address != uwb_data.tag_address:
-            self.debug("Old data or wrong tag anwsered.", 3)
-            raise UwbIncorrectData
-        elif uwb_data.tag_address is int:
-            self.debug("!!!! Got address as an int. This error is not handled !!!!", 1)
-            raise ConnectionError
-        else:
-            return uwb_data
+    #     Throws:
+    #         - UwbIncorrectData if tag is not avaliable
+    #     """
+    #     try:
+    #         # t_ask=time.time()
+    #         self.ask_for_distance(address)
+    #         # t__read = time.time()
+    #         # self.debug(f"Elapsed time in {self.ask_for_distance.__name__}: {str(t__read - t_ask)}", 2)
+    #         uwb_data = self.get_last_UwbDataPair()
+    #         # t_after = time.time()
+    #         # self.debug(f"Elapsed time in {self.read_anwser.__name__}: {str(t_after - t__read)}", 2)
+    #     except (ConnectionError, UwbDataError):
+    #         self.debug("Connection failed", 2)
+    #         self.restart()
+    #         return 0
+    #     if address != uwb_data.tag_address:
+    #         self.debug("Old data or wrong tag anwsered.", 3)
+    #         raise UwbIncorrectData
+    #     elif uwb_data.tag_address is int:
+    #         self.debug("!!!! Got address as an int. This error is not handled !!!!", 1)
+    #         raise ConnectionError
+    #     else:
+    #         return uwb_data
 
     def disconnect(self):
         #self.ble_device.disconnect()
@@ -248,6 +246,7 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue):
         try:
             data = str(serial_device.readline(), encoding="ASCII").strip()
             queue.put(data)
+            open("log.txt", "a").write(data + "\n")
         except SerialException:
             print("Serial error during read.")
         
