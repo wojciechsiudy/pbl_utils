@@ -4,6 +4,7 @@ from .inercing import AhrsConnection, AhrsData
 
 import signal
 import sys
+import json
 
 class SpauData:
     def __init__(self,
@@ -50,6 +51,7 @@ class Spausync:
         self.ahrs_connection = AhrsConnection()
         self.gps_connection = GPSConnection(mock = True)
         signal.signal(signal.SIGINT,self.end)
+        self.collected_data = []
 
     def launch(self):
         """
@@ -73,6 +75,7 @@ class Spausync:
             self.gps_connection.get_last_value()
         )
         data.calculate(points_to_talk)
+        self.collected_data.append(data)
         return data
 
     def end(self, sig, frame):
@@ -83,6 +86,8 @@ class Spausync:
         self.ahrs_connection.end()
         self.uwb_connection.end()
         self.gps_connection.end()
+        with open('data.json', 'w') as outfile:
+            json.dump(self.collected_data, outfile)
         sys.exit(0)
 
 
