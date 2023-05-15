@@ -41,10 +41,14 @@ class AhrsData(StampedData):
         return value
 
 class AhrsConnection:
-    def __init__(self, serial_path="/dev/AHRS"):
-        self.ahrs_serial = Serial(serial_path, 115200)
-        self.measures_queue = Queue(maxsize=10)
+    def __init__(self, serial_path="/dev/AHRS", mock=False):
+        self.mock = mock
         self.last_value = AhrsData()
+        self.measures_queue = Queue(maxsize=10)
+        if self.mock:
+            return
+        else:
+            self.ahrs_serial = Serial(serial_path, 115200)
         self._set_Process()
         self._begin()
 
@@ -55,7 +59,8 @@ class AhrsConnection:
         self.process = Process(target=_ahrs_Process, args=(self.ahrs_serial, self.measures_queue,))
 
     def end(self):
-        self.process.terminate()
+        if not self.mock:
+            self.process.terminate()
         
     def get_last_value(self):
         if self.measures_queue.qsize() > 0:

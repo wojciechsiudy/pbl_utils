@@ -48,7 +48,7 @@ class SpauData:
 class Spausync:
     def __init__(self):
         self.uwb_connection = UwbConnection()
-        self.ahrs_connection = AhrsConnection()
+        self.ahrs_connection = AhrsConnection(mock=True)
         self.gps_connection = GPSConnection(mock = True)
         signal.signal(signal.SIGINT,self.end)
         self.collected_data = []
