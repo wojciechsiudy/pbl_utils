@@ -5,6 +5,8 @@ from .inercing import AhrsConnection, AhrsData
 import signal
 import sys
 import json
+import pandas as pd
+import numpy as np
 
 class SpauData:
     def __init__(self,
@@ -18,7 +20,7 @@ class SpauData:
         self.calculated_position = Point(0.0, 0.0, "NOT_CALCULATED")
 
     def __repr__(self) -> str:
-        val =   "================SpauFrame================\n"
+        val =   "================SpauFrame================\n" # TODO ? comment out
         val +=  "                   UWB\n"
         val +=  str(self.uwb_data_pair) + "\n"
         val +=  "                   AHRS\n"
@@ -51,7 +53,8 @@ class Spausync:
         self.ahrs_connection = AhrsConnection(mock=True)
         self.gps_connection = GPSConnection(mock = True)
         signal.signal(signal.SIGINT,self.end)
-        self.collected_data = []
+        self.collected_data = ""
+        #self.UwBdata = pd.DataFrame(columns=['timestamp_first','timestamp_second', 'tag_adress_first', 'tag_adress_second', 'distance_first', 'distance_second'])
 
     def launch(self):
         """
@@ -79,7 +82,8 @@ class Spausync:
                 self.gps_connection.get_last_value()
             )
         data.calculate(points_to_talk)
-        self.collected_data.append(data)
+        self.collected_data+=data.__repr__()
+        #self.collected_data.append(data)
         return data
 
     def end(self, sig, frame):
@@ -90,6 +94,6 @@ class Spausync:
         self.ahrs_connection.end()
         self.uwb_connection.end()
         self.gps_connection.end()
-        with open('data.json', 'w') as outfile:
-            json.dump(self.collected_data, outfile)
+        with open('data.txt', 'w') as outfile:
+            outfile.write(self.collected_data)
         sys.exit(0)
