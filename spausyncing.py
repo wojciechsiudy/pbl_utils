@@ -12,12 +12,13 @@ class SpauData:
     def __init__(self,
                  uwb: UwbDataPair,
                  ahrs: AhrsData,
-                 gps: GpsData):
+                 gps: GpsData,
+                 position : Point = Point(0.0, 0.0, "NOT_CALCULATED")):
         self.uwb_data_pair = uwb
         self.ahrs_data = ahrs
         self.gps_data = gps
         self._validate_intupts()
-        self.calculated_position = Point(0.0, 0.0, "NOT_CALCULATED")
+        self.calculated_position = position
 
     def __repr__(self) -> str:
         val =   "================SpauFrame================\n" # TODO ? comment out
