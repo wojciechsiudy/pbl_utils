@@ -33,7 +33,7 @@ def process_file(filename:str):
         uwb_Data = UwbDataPair(first_UwbData, second_UwbData)
 
         # AHRS
-        values = data[i+9].strip().split(" ")
+        values = data[i+9].strip().split(", ")
         accel = InercialPoint(float(values[0]), float(values[1]), float(values[2]))
         gyro = InercialPoint(float(values[3]), float(values[4]), float(values[5]))
         mag = InercialPoint(float(values[6]), float(values[7]), float(values[8]))
@@ -46,13 +46,13 @@ def process_file(filename:str):
         # Calculated position
         values = data[i+13].strip().split(" ")
         x = float(values[1])
-        y = float(values[2])
-        adr_tag = values[3]
+        y = float(values[3])
+        adr_tag = values[5]
         position = Point(x, y, adr_tag)
-        data = SpauData(uwb_Data, ahrs_Data, gps_Data, position)
-        read_data.append(data)
+        data_output = SpauData(uwb_Data, ahrs_Data, gps_Data, position)
+        read_data.append(data_output)
         i += 15
     return read_data
 if __name__ == "__main__":
-    d = process_file("example_spaudata.txt")
+    d = process_file("data.txt")
     print(d)
