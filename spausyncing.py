@@ -2,6 +2,8 @@ from .mapping import GpsData, Point, GPSConnection, select_points, calculate_pos
 from .ranging import UwbConnection, UwbDataPair
 from .inercing import AhrsConnection, AhrsData
 
+from time import time
+
 import signal
 import sys
 import json
@@ -20,7 +22,10 @@ class SpauData:
         self.calculated_position = Point(0.0, 0.0, "NOT_CALCULATED")
 
     def __repr__(self) -> str:
-        val =   "================SpauFrame================\n" # TODO ? comment out
+        val =   "                FRAME VALID\n"
+        val +=  str(self.is_valid) + "\n"
+        val +=  "                   TIME\n"
+        val +=  str(time()) + "\n"
         val +=  "                   UWB\n"
         val +=  str(self.uwb_data_pair) + "\n"
         val +=  "                   AHRS\n"
@@ -28,7 +33,7 @@ class SpauData:
         val +=  "                   GPS\n"
         val +=  str(self.gps_data) + "\n"
         val +=  "             CALCULATED_POSITION\n"
-        val +=  str(self.calculated_position) + "\n"
+        val +=  str(self.calculated_position) + "\n\n"
         return val
 
     def _validate_intupts(self):
@@ -51,7 +56,7 @@ class Spausync:
     def __init__(self):
         self.uwb_connection = UwbConnection()
         self.ahrs_connection = AhrsConnection(mock=True)
-        self.gps_connection = GPSConnection(mock = True)
+        self.gps_connection = GPSConnection()
         signal.signal(signal.SIGINT,self.end)
         self.collected_data = ""
         #self.UwBdata = pd.DataFrame(columns=['timestamp_first','timestamp_second', 'tag_adress_first', 'tag_adress_second', 'distance_first', 'distance_second'])

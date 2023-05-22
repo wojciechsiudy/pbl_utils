@@ -1,6 +1,6 @@
 import BLE_GATT
 import esptool
-import time
+from time import time
 from serial import Serial, SerialException
 from .uwb_constants import UwbConstants
 from .misc import StampedData
@@ -246,7 +246,7 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue):
         try:
             data = str(serial_device.readline(), encoding="ASCII").strip()
             queue.put(data)
-            open("log.txt", "a").write(data + "\n")
+            open("log.txt", "a").write(str(time()) + "|" + data + "\n")
         except SerialException:
             print("Serial error during read.")
         
