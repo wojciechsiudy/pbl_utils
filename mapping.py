@@ -56,23 +56,24 @@ class GPSConnection():
         self.settings = UwbConstants()
         self.measures_queue = Queue(maxsize = 10)
         self.last_value = GpsData(0.0, 0.0)
+        self.mocking_timer = Value('i', 0)
         if mock:
-           self.mocking_timer = Value('i', 0)
-           self.process = Process(target = mock_gps_position, args = (self.measures_queue, self.mocking_timer)) 
+           self.process = Process(target = mock_gps_position, args = (self.measures_queue, self.mocking_timer))
         else:
-            self.gps_serial = Serial(self.settings.get_value("GPS_SERIAL_ADDRESS"))
-            self.process = Process(target = get_gps_position, args = (self.gps_serial, self.measures_queue, self.mocking_timer))
+            self.gps_serial = Serial(self.settings.get_value("GPS_SERIAL_ADDRESS"), baudrate=9600)
+            self.process = Process(target = get_gps_position, args = (self.gps_serial, self.measures_queue))
 
     def end(self):
         self.process.terminate()
     def begin(self):
         self.process.start()
+        print("GPS process started")
 
     def get_last_value(self):
         if self.measures_queue.qsize() > 0:
             self.last_value = self.measures_queue.get()
         return self.last_value
-    
+
 
 def select_points(gps_position: Point) -> tuple:
     """
@@ -109,9 +110,9 @@ def calculate_position(gps_data: GpsData, uwb_data: UwbDataPair, points_pair: tu
     try:
         anchor_A        = points_pair[0]
         anchor_B        = points_pair[1]
-        ctrl_anchor     = gps_data 
+        ctrl_anchor     = gps_data
         distance_a      = uwb_data.nearest.distance
-        distance_b      = uwb_data.second.distance 
+        distance_b      = uwb_data.second.distance
         power_a         = uwb_data.nearest.power
         power_b         = uwb_data.second.power
     except AttributeError as err:
@@ -124,9 +125,9 @@ def calculate_position(gps_data: GpsData, uwb_data: UwbDataPair, points_pair: tu
     anch_xy_B = transformer1.transform(anchor_B.x, anchor_B.y)
     ctrlanch_xy = transformer1.transform(ctrl_anchor.x, ctrl_anchor.y)
     scale_offset_factor = 1.005
-    
+
     d = math.sqrt((anch_xy_B[0] - anch_xy_A[0]) ** 2 + (anch_xy_B[1] - anch_xy_A[1]) ** 2)
-    
+
     # non intersecting
     if d > distance_a + distance_b:
         while (distance_a + distance_b < d and scale_offset_factor < MAX_UWB_OFFSET_FACTOR):
@@ -197,15 +198,21 @@ def get_gps_position(gps_serial: Serial, queue: Queue) -> Point:
     Reads point from GPS device.
     """
     while (True):
+
         try:
             line = str(gps_serial.readline(), encoding="ASCII")
             if "GPGGA" in line: # read line containig position
                 data = line.split(',')
-                if (int(data[7]) < 0):  
+                with open("gps_data.txt", "a+") as file:
+                    file.write(line)
+                if (int(data[7]) < 0):
                     continue# not enough satellites
                 if queue.qsize()>6:
                     queue.get()
                 queue.put(nmea_sentence_to_gps_point(data))
+            else:
+                with open("gps_data.txt", "a+") as file:
+                    file.write("NO GPS SIGNAL\n")
         except(UnicodeDecodeError):
             pass
 
