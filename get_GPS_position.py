@@ -14,7 +14,7 @@ def getGPSposition(points:List[Point]) -> tuple[Point, float, float]:
     """
     x = np.array([p.x for p in points])
     y = np.array([p.y for p in points])
-    pos = Point(np.mean(x),np.mean(y))
+    pos = Point(np.median(x),np.median(y))
     return (pos, np.std(x),np.std(y))
 
 if __name__ == "__main__":
