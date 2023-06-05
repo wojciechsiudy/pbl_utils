@@ -7,7 +7,7 @@ from .misc import StampedData
 from multiprocessing import Process, Queue
 UWB_ERROR_MESSAGE = "Hello Wojtek"
 UWB_TIMEOUT_MESSAGE = "Timed out!"
-
+UWB_SWEEP_BEGIN = "S"
 class UwbDataError(Exception):
     pass
 
@@ -108,6 +108,9 @@ class UwbConnection:
         self.read_settings_from_json()
         self.debug("Lanuching BLE device...", 2)
         self.measures_queue = Queue(maxsize=10)
+        self.sweep_queue = Queue(maxsize=20)
+        self.sweep_size = 0
+        self.sweep=[]
         try:
             self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
             self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"), 
@@ -123,7 +126,7 @@ class UwbConnection:
 
     def _set_processes(self):
         self.process_reader = Process(target=_uwb_anwser_serial_reader, 
-                               args=(self.serial_device, self.measures_queue,))
+                               args=(self.serial_device, self.measures_queue,self.sweep_queue))
     def _begin_process(self):
         self.process_reader.start()        
 
@@ -187,7 +190,15 @@ class UwbConnection:
         except UwbDataError:
             self.debug("Wrong data recived. Probably message standard has changed.", 2)
             pass
-
+    def get_last_sweep(self) -> list[UwbData] | None:
+        if self.sweep_queue.qsize() == 0:
+            return self.sweeps[-1]
+        sweeps = []
+        while self.sweep_queue.qsize() > 0:
+            sweeps.append(UwbData.create_UWB_data(self.sweep_queue.get()[2:]))
+        return sweeps.reverse()
+    def is_sweep_ready(self) -> bool:
+        return self.sweep_queue.qsize() > 0
     # def read_uwb_data(self, address: str) -> UwbDataPair:
     #     """
     #     Method provides distance to anchor that
@@ -234,18 +245,29 @@ class UwbConnection:
         self.connect()
 
 
-def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue):
+def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Queue):
     """
     Read the last recived distance via serial
 
     Raw data is returnetd
     """
+    sweep=[]
+    sweep_size=0
     while True:
         if queue.qsize() > 5:
                 queue.get()
         try:
             data = str(serial_device.readline(), encoding="ASCII").strip()
-            queue.put(data)
+            # Sweep detected
+            if data.startswith("SWEEP"):
+                sweep_size = int(data.split(" ")[1])
+            elif data.startswith("S"):
+                sweep.append(UwbData.create_UWB_data(data[2:]))
+                if len(sweep) == sweep_size:
+                    sweep_queue.put(sweep)
+                    sweep=[]
+            else:
+                queue.put(data)
             open("log.txt", "a").write(str(time()) + "|" + data + "\n")
         except SerialException:
             print("Serial error during read.")

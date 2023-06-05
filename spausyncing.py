@@ -76,9 +76,12 @@ class Spausync:
 
         MPerforming calculations and data exchange
         """
-        points_to_talk = select_points(self.gps_connection.get_last_value())
-        self.uwb_connection.ask_for_distances(points_to_talk[0].address, points_to_talk[1].address)
+        #points_to_talk = select_points(self.gps_connection.get_last_value())
+        #self.uwb_connection.ask_for_distances(points_to_talk[0].address, points_to_talk[1].address)
         uwb_data = self.uwb_connection.get_last_UwbDataPair()
+        if self.uwb_connection.is_sweep_ready():
+            sweep = self.uwb_connection.get_last_sweep()
+        
         if uwb_data == None:
             return None
         else:
@@ -87,7 +90,7 @@ class Spausync:
                 self.ahrs_connection.get_last_value(),
                 self.gps_connection.get_last_value()
             )
-        data.calculate(points_to_talk)
+        data.calculate(sweep)
         self.collected_data+=data.__repr__()
         #self.collected_data.append(data)
         return data
