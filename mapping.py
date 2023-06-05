@@ -166,6 +166,55 @@ def calculate_position(gps_data: GpsData, uwb_data: UwbDataPair, points_pair: tu
         else:
             position = transformer2.transform(x4, y4)
             return Point(position[0], position[1])
+        
+def sweep_position(anchor_A:Point, anchor_B:Point, ctrl_anchor:Point, distance_a:float, distance_b:float, distance_c:float, power_a:float, power_b:float):
+    transformer1 = Transformer.from_crs("EPSG:4326", "EPSG:2177")        #transform from WGS84 to PL-2000
+    transformer2 = Transformer.from_crs("EPSG:2177", "EPSG:4326")        #transform from PL-2000 to WGS84
+    anch_xy_A = transformer1.transform(anchor_A.x, anchor_A.y)
+    anch_xy_B = transformer1.transform(anchor_B.x, anchor_B.y)
+    ctrlanch_xy = transformer1.transform(ctrl_anchor.x, ctrl_anchor.y)
+    scale_offset_factor = 1.005
+    
+    d = math.sqrt((anch_xy_B[0] - anch_xy_A[0]) ** 2 + (anch_xy_B[1] - anch_xy_A[1]) ** 2)
+    
+    # non intersecting
+    if d > distance_a + distance_b:
+        while (distance_a + distance_b < d and scale_offset_factor < MAX_UWB_OFFSET_FACTOR):
+            if power_a>power_b:
+                distance_b *= scale_offset_factor
+            elif power_a<power_b:
+                distance_a *= scale_offset_factor
+            scale_offset_factor += 0.005
+    if d > distance_a + distance_b:
+        return Point(0, 0, "-2 non-intersecting")
+    # One circle within other
+    if d < abs(distance_a - distance_b):
+        return Point(0, 0, "-3 one circle within other")
+    # coincident circles
+    if d == 0 and distance_a == distance_b:
+        return Point(0, 0, "-4 coincident circles")
+    else:
+        a = (distance_a ** 2 - distance_b ** 2 + d ** 2) / (2 * d)
+        h = math.sqrt(distance_a ** 2 - a ** 2)
+        x2 = anch_xy_A[0] + a * (anch_xy_B[0] - anch_xy_A[0]) / d
+        y2 = anch_xy_A[1] + a * (anch_xy_B[1] - anch_xy_A[1]) / d
+        x3 = x2 + h * (anch_xy_B[1] - anch_xy_A[1]) / d
+        y3 = y2 - h * (anch_xy_B[0] - anch_xy_A[0]) / d
+
+        x4 = x2 - h * (anch_xy_B[1] - anch_xy_A[1]) / d
+        y4 = y2 + h * (anch_xy_B[0] - anch_xy_A[0]) / d
+
+        #return (x3, y3, x4, y4)
+        pa = (x3, y3)
+        pb = (x4, y4)
+        d1 = math.sqrt((ctrlanch_xy[0] - pa[0]) **2 + (ctrlanch_xy[1] - pa[1]) **2)
+        d2 = math.sqrt((ctrlanch_xy[0] - pb[0]) **2 + (ctrlanch_xy[1] - pb[1]) **2)
+        if abs(d1 - distance_c) < abs(d2 - distance_c):
+            position = transformer2.transform(x3, y3)
+            return Point(position[0], position[1])
+        else:
+            position = transformer2.transform(x4, y4)
+            return Point(position[0], position[1])
 
 def nmea_sentence_to_gps_point(data):
     """
