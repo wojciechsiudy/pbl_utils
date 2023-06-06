@@ -1,5 +1,5 @@
-from .mapping import GpsData, Point, GPSConnection, select_points, calculate_position
-from .ranging import UwbConnection, UwbDataPair
+from .mapping import GpsData, Point, GPSConnection, select_points, calculate_position,load_points_from_json_into_dict, sweep_position
+from .ranging import UwbConnection, UwbDataPair,UwbData
 from .inercing import AhrsConnection, AhrsData
 
 from time import time
@@ -51,8 +51,16 @@ class SpauData:
 
     def calculate(self, points_pair):
         self.calculated_position = calculate_position(self.gps_data, self.uwb_data_pair, points_pair)
-
-
+    def calculate_from_sweep(self, sweep:list[UwbData]):
+        # convert UwbData to Points
+        points = load_points_from_json_into_dict()
+        if len(sweep) < 3:
+            return  
+        gps_points=[]
+        for i in range(3):
+          gps_points.append(points[sweep[i].tag_address])
+        self.calculated_position = sweep_position(gps_points[0],gps_points[1],gps_points[2],sweep[0].distance,sweep[1].distance,sweep[2].distance,sweep[0].power,sweep[1].power)
+                  
 class Spausync:
     def __init__(self):
         self.uwb_connection = UwbConnection()
