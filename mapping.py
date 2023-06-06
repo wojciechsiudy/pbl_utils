@@ -287,7 +287,11 @@ def load_points_from_json():
     for line in read_json_file():
         points.append(Point(line['x'], line['y'], line ['address']))
     return points
-
+def load_points_from_json_into_dict():
+    points = {}
+    for line in read_json_file():
+        points[line['address']] = Point(line['x'], line['y'], line ['address'])
+    return points
 def getPoints(subset):
     if subset == 0:
         return [
