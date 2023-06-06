@@ -40,12 +40,12 @@ if __name__ == "__main__":
             values.append(deg)
         mbe = np.mean(residuals)
         mse = np.mean([pow(x,2) for x in residuals])
+        stat, p = stats.ttest_1samp(values,real)
         interval = stats.t.interval(confidence=0.90, df=len(values)-1,
               loc=np.mean(values),
               scale=stats.sem(values))
         print(f'For {s+1} angle calculation:')
-        print(f'\tReference values were: {s_info[s]}, angle value: {real}, number of measurement: {len(values)}')
-        print(f'\tMSE is equal to {mse} degrees\n\tRMSE is equal to {sqrt(mse)} degrees, \n\tMBE is equal to {mbe} degrees')
+        print(f'\tReference values were: {s_info[s],3}, angle value: {round(real,3)}, number of measurement: {len(values)}')
+        print(f'\tNull hyphothesis, mean result from angle stimation is equal to real angle value, results: t statistic value: {round(stat,3)}, p_value: {round(p,3)}. Null hypothesis is rejected: {p<0.05}')
+        print(f'\tMSE is equal to {round(mse,3)} degrees\n\tRMSE is equal to {round(sqrt(mse),3)} degrees, \n\tMBE is equal to {round(mbe,3)} degrees.\n\tMbe is {round(mbe/real*100,3)}% of real value')
         print(f"\tConfidence interval is equal to {interval} in degrees")
-        plt.scatter([s_info[s][0] for i in range(len(residuals))],values)
-    plt.show()
