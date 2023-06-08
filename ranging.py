@@ -201,7 +201,8 @@ class UwbConnection:
             return self.sweep[-1]
         sweep = []
         while self.sweep_queue.qsize() > 0:
-            sweep.append(UwbSingleData.create_UWB_single_data(self.sweep_queue.get()[2:]))
+            sweep.append(self.sweep_queue.get())
+        debug(str(sweep))
         return sweep.reverse()
 
     def is_sweep_ready(self) -> bool:
@@ -266,6 +267,8 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Q
     while True:
         if queue.qsize() > 5:
                 queue.get()
+        if sweep_queue.qsize() > 5:
+                sweep_queue.get()
         try:
             data = str(serial_device.readline(), encoding="ASCII").strip()
             debug(str(tick) + " " + data)
@@ -276,7 +279,7 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Q
                 sweep_size = int(data.split(" ")[1])
             elif data.startswith("S"):
                 debug("S dectected!")
-                sweep.append(UwbSingleData.create_UWB_single_data(data))
+                sweep.append(UwbSingleData.create_UWB_single_data(data[3:]))
                 if len(sweep) == sweep_size:
                     sweep_queue.put(sweep)
                     sweep=[]
