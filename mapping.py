@@ -173,7 +173,7 @@ def calculate_position(gps_data: GpsData, uwb_data: UwbDataPair, points_pair: tu
         else:
             position = transformer2.transform(x4, y4)
             return Point(position[0], position[1])
-        
+
 def sweep_position(anchor_A:Point, anchor_B:Point, ctrl_anchor:Point, distance_a:float, distance_b:float, distance_c:float, power_a:float, power_b:float):
     transformer1 = Transformer.from_crs("EPSG:4326", "EPSG:2177")        #transform from WGS84 to PL-2000
     transformer2 = Transformer.from_crs("EPSG:2177", "EPSG:4326")        #transform from PL-2000 to WGS84
@@ -181,9 +181,9 @@ def sweep_position(anchor_A:Point, anchor_B:Point, ctrl_anchor:Point, distance_a
     anch_xy_B = transformer1.transform(anchor_B.x, anchor_B.y)
     ctrlanch_xy = transformer1.transform(ctrl_anchor.x, ctrl_anchor.y)
     scale_offset_factor = 1.005
-    
+
     d = math.sqrt((anch_xy_B[0] - anch_xy_A[0]) ** 2 + (anch_xy_B[1] - anch_xy_A[1]) ** 2)
-    
+
     # non intersecting
     if d > distance_a + distance_b:
         while (distance_a + distance_b < d and scale_offset_factor < MAX_UWB_OFFSET_FACTOR):
@@ -295,12 +295,5 @@ def load_points_from_json():
         points.append(Point(line['x'], line['y'], line ['address']))
     return points
 
-def get_points(subset):
-    if subset == 0:
-        return [
-            Point(50.290138, 18.677277, "AA:BB"),
-            Point(50.289368, 18.678203, "CC:DD")]
-    elif subset == 1:
-        return load_points_from_json()
-    else:
-        return None
+def get_points():
+    return load_points_from_json()

@@ -24,7 +24,7 @@ class UwbData(StampedData):
     """
     Data returned from UWB device
     """
-    def __init__(self, tag_adress:str = "none", distance:float = 0.0, 
+    def __init__(self, tag_adress:str = "none", distance:float = 0.0,
                 power:float = 0.0, valid:bool = True):
         super().__init__()
         self.tag_address = tag_adress
@@ -46,7 +46,7 @@ class UwbData(StampedData):
     def create_UWB_data(data: str = ""):
         """
         Method converting raw UWB data to UwbData object
-        
+
         WARNING!
         this method uses single-anchor format from spgh-2.0 or less
         """
@@ -75,7 +75,7 @@ class UwbDataPair:
     def __repr__(self) -> str:
         repr=f"Nearest: {self.nearest.__repr__()}\n Second: {self.second.__repr__()}\n"
         return repr
-    
+
     @staticmethod
     def create_UWB_data_pair(data: str = ""):
         """
@@ -106,14 +106,14 @@ class UwbConnection:
     def __init__(self):
         self.set_initial_values()
         self.read_settings_from_json()
-        self.debug("Lanuching BLE device...", 2)
+        #self.debug("Lanuching BLE device...", 2)
         self.measures_queue = Queue(maxsize=10)
         self.sweep_queue = Queue(maxsize=20)
         self.sweep_size = 0
         self.sweep=[]
         try:
-            self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
-            self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"), 
+            #self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
+            self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"),
                                         baudrate=115200)
         except SerialException:
             self.debug("Serial error!", 1)
@@ -125,17 +125,17 @@ class UwbConnection:
         self._begin_process()
 
     def _set_processes(self):
-        self.process_reader = Process(target=_uwb_anwser_serial_reader, 
+        self.process_reader = Process(target=_uwb_anwser_serial_reader,
                                args=(self.serial_device, self.measures_queue,self.sweep_queue))
     def _begin_process(self):
-        self.process_reader.start()        
+        self.process_reader.start()
 
     def set_initial_values(self):
         self.last_address_nearest = "00:00"
         self.last_address_second = "00:00"
         self.last_reader_message=UwbDataPair(UwbData(),UwbData())
     def end(self):
-        self.process_reader.terminate()    
+        self.process_reader.terminate()
     def read_settings_from_json(self):
         self.settings = UwbConstants()
         self.uwb_mac_adress = self.settings.get_value("DEVICE_ADDRESS")
@@ -151,16 +151,16 @@ class UwbConnection:
 
     def connect(self):
         self.debug("Connecting...", 2)
-        try:
-            self.ble_device.connect()
-            #self.serial_device.open()
-        except SerialException:
-            self.debug("Serial error!", 1)
-            raise ConnectionError
-        except:
-            self.debug("Connection failed. Some error in BLE-GATT", 1)
-            raise ConnectionError
-        self.debug("Device connected!", 2)
+        # try:
+        #     self.ble_device.connect()
+        #     #self.serial_device.open()
+        # except SerialException:
+        #     self.debug("Serial error!", 1)
+        #     raise ConnectionError
+        # except:
+        #     self.debug("Connection failed. Some error in BLE-GATT", 1)
+        #     raise ConnectionError
+        # self.debug("Device connected!", 2)
         
     def ask_for_distances(self, address_1: str, address_2: str):
         """
@@ -190,13 +190,15 @@ class UwbConnection:
         except UwbDataError:
             self.debug("Wrong data recived. Probably message standard has changed.", 2)
             pass
+
     def get_last_sweep(self) -> list[UwbData] | None:
         if self.sweep_queue.qsize() == 0:
-            return self.sweeps[-1]
-        sweeps = []
+            return self.sweep[-1]
+        sweep = []
         while self.sweep_queue.qsize() > 0:
-            sweeps.append(UwbData.create_UWB_data(self.sweep_queue.get()[2:]))
-        return sweeps.reverse()
+            sweep.append(UwbData.create_UWB_data(self.sweep_queue.get()[2:]))
+        return sweep.reverse()
+
     def is_sweep_ready(self) -> bool:
         return self.sweep_queue.qsize() > 0
     # def read_uwb_data(self, address: str) -> UwbDataPair:
@@ -271,4 +273,3 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Q
             open("log.txt", "a").write(str(time()) + "|" + data + "\n")
         except SerialException:
             print("Serial error during read.")
-        

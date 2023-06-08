@@ -1,4 +1,4 @@
-from .mapping import GpsData, Point, GPSConnection, select_points, calculate_position,load_points_from_json_into_dict, sweep_position
+from .mapping import GpsData, Point, GPSConnection, get_points, calculate_position, sweep_position
 from .ranging import UwbConnection, UwbDataPair,UwbData
 from .inercing import AhrsConnection, AhrsData
 
@@ -51,21 +51,24 @@ class SpauData:
 
     def calculate(self, points_pair):
         self.calculated_position = calculate_position(self.gps_data, self.uwb_data_pair, points_pair)
+
     def calculate_from_sweep(self, sweep:list[UwbData]):
         # convert UwbData to Points
-        points = load_points_from_json_into_dict()
+        points = get_points()
         if len(sweep) < 3:
-            return  
-        gps_points=[]
+            return
+        gps_points = []
         for i in range(3):
-          gps_points.append(points[sweep[i].tag_address])
+            for point in points:
+                if point.tag_address == sweep[i].tag_address:
+                    gps_points.append(point)
         self.calculated_position = sweep_position(gps_points[0],gps_points[1],gps_points[2],sweep[0].distance,sweep[1].distance,sweep[2].distance,sweep[0].power,sweep[1].power)
-                  
+
 class Spausync:
     def __init__(self):
         self.uwb_connection = UwbConnection()
         self.ahrs_connection = AhrsConnection(mock=True)
-        self.gps_connection = GPSConnection()
+        self.gps_connection = GPSConnection(mock=True)
         signal.signal(signal.SIGINT,self.end)
         self.collected_data = ""
         #self.UwBdata = pd.DataFrame(columns=['timestamp_first','timestamp_second', 'tag_adress_first', 'tag_adress_second', 'distance_first', 'distance_second'])
@@ -89,7 +92,7 @@ class Spausync:
         uwb_data = self.uwb_connection.get_last_UwbDataPair()
         if self.uwb_connection.is_sweep_ready():
             sweep = self.uwb_connection.get_last_sweep()
-        
+
         if uwb_data == None:
             return None
         else:
@@ -98,7 +101,7 @@ class Spausync:
                 self.ahrs_connection.get_last_value(),
                 self.gps_connection.get_last_value()
             )
-        data.calculate(sweep)
+        data.calculate((get_points()[0], get_points()[1]))
         self.collected_data+=data.__repr__()
         #self.collected_data.append(data)
         return data
