@@ -1,5 +1,5 @@
 from pbl_utils.mapping import GpsData, Point
-from pbl_utils.ranging import UwbDataPair,UwbData
+from pbl_utils.ranging import UwbDataPair,UwbSingleData
 from pbl_utils.inercing import AhrsData,InercialPoint
 from pbl_utils.spausyncing import SpauData
 
@@ -24,13 +24,13 @@ def process_file(filename:str):
         uwb_first_distance = float(data[i+5].strip().split(" ")[2])
         uwb_first_power = float(data[i+5].strip().split(" ")[3])
         uwb_first_is_valid = data[i+5].strip().split(" ")[4] == "valid"
-        first_UwbData = UwbData(uwb_first_tag_address, uwb_first_distance, uwb_first_power, uwb_first_is_valid)
+        first_UwbData = UwbSingleData(uwb_first_tag_address, uwb_first_distance, uwb_first_power, uwb_first_is_valid)
         # Second UWB
         uwb_second_tag_address = data[i+6].strip().split(" ")[1]
         uwb_second_distance = float(data[i+6].strip().split(" ")[2])
         uwb_second_power = float(data[i+6].strip().split(" ")[3])
         uwb_second_is_valid = data[i+6].strip().split(" ")[4] == "valid"
-        second_UwbData = UwbData(uwb_second_tag_address, uwb_second_distance, uwb_second_power, uwb_second_is_valid)
+        second_UwbData = UwbSingleData(uwb_second_tag_address, uwb_second_distance, uwb_second_power, uwb_second_is_valid)
 
         uwb_Data = UwbDataPair(first_UwbData, second_UwbData)
 

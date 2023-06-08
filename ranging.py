@@ -1,6 +1,7 @@
 import BLE_GATT
 import esptool
 from time import time
+from datetime import datetime
 from serial import Serial, SerialException
 from .uwb_constants import UwbConstants
 from .misc import StampedData
@@ -8,6 +9,8 @@ from multiprocessing import Process, Queue
 UWB_ERROR_MESSAGE = "Hello Wojtek"
 UWB_TIMEOUT_MESSAGE = "Timed out!"
 UWB_SWEEP_BEGIN = "S"
+
+LOGFILE = "ranging_log.txt"
 class UwbDataError(Exception):
     pass
 
@@ -20,7 +23,7 @@ class UwbFatalError(Exception):
 class UwbIncorrectData(Exception):
     pass
 
-class UwbData(StampedData):
+class UwbSingleData(StampedData):
     """
     Data returned from UWB device
     """
@@ -43,9 +46,9 @@ class UwbData(StampedData):
         return repr
 
     @staticmethod
-    def create_UWB_data(data: str = ""):
+    def create_UWB_single_data(data: str = ""):
         """
-        Method converting raw UWB data to UwbData object
+        Method converting raw UWB data to UwbSingleData object
 
         WARNING!
         this method uses single-anchor format from spgh-2.0 or less
@@ -55,20 +58,20 @@ class UwbData(StampedData):
             if len(data_array) < 2:
                 raise UwbDataError
             if data_array[1] == UWB_TIMEOUT_MESSAGE:
-                return UwbData(valid = False)
+                return UwbSingleData(valid = False)
             tag_address = data_array[0][:5]
             distance = float(data_array[1])
             power = float(data_array[2])
         except ValueError:
             raise UwbDataError
-        return UwbData(tag_address, distance, power)
+        return UwbSingleData(tag_address, distance, power)
 
 
 class UwbDataPair:
     """
     Pair of UWB messages
     """
-    def __init__(self, nearest: UwbData, second: UwbData):
+    def __init__(self, nearest: UwbSingleData, second: UwbSingleData):
         self.nearest = nearest
         self.second = second
 
@@ -84,8 +87,8 @@ class UwbDataPair:
         datas = data.split("_")
         if len(datas) < 2:
             raise UwbDataError
-        first_uwb = UwbData.create_UWB_data(datas[0])
-        second_uwb = UwbData.create_UWB_data(datas[1])
+        first_uwb = UwbSingleData.create_UWB_single_data(datas[0])
+        second_uwb = UwbSingleData.create_UWB_single_data(datas[1])
         return UwbDataPair(first_uwb, second_uwb)
 
 
@@ -93,20 +96,14 @@ class UwbConnection:
     """
     Entity responsible for communication
 
-    Usage:
-        connection = UwbBluetoothConnection()
-        connection.connect()
-        connection.ask_for_distance(anchor_address)
-        distance = connection.read_anwser()
-        connection.disconnect()
-
     Constructor throws UwbFatalError when connection is
     not possible
     """
     def __init__(self):
         self.set_initial_values()
+        self.debug(("It is " + str(datetime.now()) +" Initializing..."), 2)
         self.read_settings_from_json()
-        #self.debug("Lanuching BLE device...", 2)
+        # self.debug("Lanuching BLE device...", 2)
         self.measures_queue = Queue(maxsize=10)
         self.sweep_queue = Queue(maxsize=20)
         self.sweep_size = 0
@@ -114,15 +111,18 @@ class UwbConnection:
         try:
             #self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
             self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"),
-                                        baudrate=115200)
+                                        baudrate=115200,
+                                        timeout=1)
         except SerialException:
             self.debug("Serial error!", 1)
-        except:
-            self.debug("Bluetooth error. Device not found! Adress used: " + str(self.uwb_mac_adress), 0)
-            # TODO: try connection again
-            raise UwbFatalError
+            raise (UwbFatalError)
+        # except:
+        #     self.debug("Bluetooth error. Device not found! Adress used: " + str(self.uwb_mac_adress), 0)
+        #     # TODO: try connection again
+        #     raise UwbFatalError
         self._set_processes()
         self._begin_process()
+        self.debug("Initialized!", 2)
 
     def _set_processes(self):
         self.process_reader = Process(target=_uwb_anwser_serial_reader,
@@ -131,11 +131,14 @@ class UwbConnection:
         self.process_reader.start()
 
     def set_initial_values(self):
+        self.debug_level = 3
         self.last_address_nearest = "00:00"
         self.last_address_second = "00:00"
-        self.last_reader_message=UwbDataPair(UwbData(),UwbData())
+        self.last_reader_message=UwbDataPair(UwbSingleData(),UwbSingleData())
+
     def end(self):
         self.process_reader.terminate()
+
     def read_settings_from_json(self):
         self.settings = UwbConstants()
         self.uwb_mac_adress = self.settings.get_value("DEVICE_ADDRESS")
@@ -148,12 +151,14 @@ class UwbConnection:
     def debug(self, message: str, level=3):
         if self.debug_level >= level:
             print(message)
+            with open(LOGFILE, "a+") as file:
+                file.write(message + "\n")
 
-    def connect(self):
-        self.debug("Connecting...", 2)
+    # def connect(self):
+        # self.debug("Connecting...", 2)
         # try:
         #     self.ble_device.connect()
-        #     #self.serial_device.open()
+        # self.serial_device.open()
         # except SerialException:
         #     self.debug("Serial error!", 1)
         #     raise ConnectionError
@@ -161,7 +166,7 @@ class UwbConnection:
         #     self.debug("Connection failed. Some error in BLE-GATT", 1)
         #     raise ConnectionError
         # self.debug("Device connected!", 2)
-        
+
     def ask_for_distances(self, address_1: str, address_2: str):
         """
         Send ranging request to two anchors
@@ -191,16 +196,17 @@ class UwbConnection:
             self.debug("Wrong data recived. Probably message standard has changed.", 2)
             pass
 
-    def get_last_sweep(self) -> list[UwbData] | None:
+    def get_last_sweep(self) -> list[UwbSingleData] | None:
         if self.sweep_queue.qsize() == 0:
             return self.sweep[-1]
         sweep = []
         while self.sweep_queue.qsize() > 0:
-            sweep.append(UwbData.create_UWB_data(self.sweep_queue.get()[2:]))
+            sweep.append(UwbSingleData.create_UWB_single_data(self.sweep_queue.get()[2:]))
         return sweep.reverse()
 
     def is_sweep_ready(self) -> bool:
         return self.sweep_queue.qsize() > 0
+
     # def read_uwb_data(self, address: str) -> UwbDataPair:
     #     """
     #     Method provides distance to anchor that
@@ -244,10 +250,11 @@ class UwbConnection:
             esptool.main(reset_commands)
         except SerialException:
             self.debug("Serial connection lost!", 1)
-        self.connect()
+        # self.connect()
 
 
 def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Queue):
+    debug("Serial process has begun.")
     """
     Read the last recived distance via serial
 
@@ -255,21 +262,28 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Q
     """
     sweep=[]
     sweep_size=0
+    tick = 0
     while True:
         if queue.qsize() > 5:
                 queue.get()
         try:
             data = str(serial_device.readline(), encoding="ASCII").strip()
+            debug(str(tick) + " " + data)
+            tick += 1
             # Sweep detected
             if data.startswith("SWEEP"):
+                debug("Sweep detected!")
                 sweep_size = int(data.split(" ")[1])
             elif data.startswith("S"):
-                sweep.append(UwbData.create_UWB_data(data[2:]))
+                debug("S dectected!")
+                sweep.append(UwbSingleData.create_UWB_single_data(data[2:]))
                 if len(sweep) == sweep_size:
                     sweep_queue.put(sweep)
                     sweep=[]
             else:
                 queue.put(data)
-            open("log.txt", "a").write(str(time()) + "|" + data + "\n")
         except SerialException:
-            print("Serial error during read.")
+            debug("Serial error during read.")
+
+def debug(message):
+    open("ranging_log.txt", "a+").write(str(time()) +  ": " + message + "\n")

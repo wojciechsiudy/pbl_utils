@@ -1,5 +1,5 @@
 from .mapping import GpsData, Point, GPSConnection, get_points, calculate_position, sweep_position
-from .ranging import UwbConnection, UwbDataPair,UwbData
+from .ranging import UwbConnection, UwbDataPair,UwbSingleData
 from .inercing import AhrsConnection, AhrsData
 
 from time import time
@@ -52,7 +52,7 @@ class SpauData:
     def calculate(self, points_pair):
         self.calculated_position = calculate_position(self.gps_data, self.uwb_data_pair, points_pair)
 
-    def calculate_from_sweep(self, sweep:list[UwbData]):
+    def calculate_from_sweep(self, sweep:list[UwbSingleData]):
         # convert UwbData to Points
         points = get_points()
         if len(sweep) < 3:
@@ -77,7 +77,7 @@ class Spausync:
         """
         Method initializing all submodules
         """
-        self.uwb_connection.connect()
+        # self.uwb_connection.connect()
         self.gps_connection.begin()
         # the rest is connected via consructors
 

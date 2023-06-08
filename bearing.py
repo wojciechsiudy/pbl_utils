@@ -1,4 +1,4 @@
-from .ranging import UwbConnection, UwbData, _uwb_anwser_serial_reader
+from .ranging import UwbConnection, UwbSingleData, _uwb_anwser_serial_reader
 from multiprocessing import Process, Queue
 from serial import Serial
 
@@ -20,6 +20,5 @@ class BearingUwb():
     def end(self):
         for con in self.connections:
             con.end()
-    def get_last_messages(self) -> tuple(UwbData,UwbData):
+    def get_last_messages(self) -> tuple(UwbSingleData,UwbSingleData):
         return tuple( x.get_last_UwbDataPair() for x in self.connections)
-        
