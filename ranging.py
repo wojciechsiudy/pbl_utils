@@ -276,7 +276,7 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Q
                 sweep_size = int(data.split(" ")[1])
             elif data.startswith("S"):
                 debug("S dectected!")
-                sweep.append(UwbSingleData.create_UWB_single_data(data[2:]))
+                sweep.append(UwbSingleData.create_UWB_single_data(data))
                 if len(sweep) == sweep_size:
                     sweep_queue.put(sweep)
                     sweep=[]
