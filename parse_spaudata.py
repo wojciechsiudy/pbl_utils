@@ -3,6 +3,8 @@ from pbl_utils.ranging import UwbDataPair,UwbData
 from pbl_utils.inercing import AhrsData,InercialPoint
 from pbl_utils.spausyncing import SpauData
 
+import matplotlib.pyplot as plt
+
 def process_file(filename:str):
     read_data = []
     with open(filename) as f:
@@ -53,6 +55,32 @@ def process_file(filename:str):
         read_data.append(data_output)
         i += 15
     return read_data
+
 if __name__ == "__main__":
-    d = process_file("data.txt")
-    print(d)
+    gps_x = []
+    gps_y = []
+    calc_x = []
+    calc_y = []
+
+    data = process_file("data2.txt")
+    print(data)
+
+    with open("calculated_positions.csv", "w") as f:
+        for d in data:
+            f.write(str(d.calculated_position.x) + "," + str(d.calculated_position.y) + "\n")
+
+    for d in data:
+        if d.calculated_position.x == 0.0 or d.calculated_position.y == 0.0 or d.gps_data.y == 0.0 or d.gps_data.x == 0.0:
+            continue
+        else:
+            gps_x.append(d.gps_data.x)
+            gps_y.append(d.gps_data.y)
+            calc_x.append(d.calculated_position.x)
+            calc_y.append(d.calculated_position.y)
+
+    #make the plot
+    plt.plot(gps_y, gps_x, 'ro')
+    plt.plot(calc_y, calc_x, 'bo')
+    #plt.plot(anchors_y, anchors_x, 'gs')
+
+    plt.show()

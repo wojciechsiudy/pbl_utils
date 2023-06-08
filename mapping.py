@@ -81,14 +81,21 @@ def select_points(gps_position: Point) -> tuple:
     based on GPS position
     """
     points_around = []
-    for point in getPoints(1):
+    points_database = get_points(1)
+    if points_database is None:
+        raise ValueError("Database is empty")
+    for point in points_database:
         distance = get_distance(gps_position, point)
         if distance < float('inf'):
             points_around.append((point, get_distance(gps_position, point)))
     points_around.sort(key=lambda x: x[1])
     nearest = points_around[0][0]
     second = points_around[1][0]
-    return (nearest, second)
+    if len(points_around) > 2:
+        third = points_around[2][0]
+        return (nearest, second, third)
+    else:
+        return (nearest, second)
 
 
 def get_distance(a:Point, b:Point) -> float:
@@ -287,12 +294,8 @@ def load_points_from_json():
     for line in read_json_file():
         points.append(Point(line['x'], line['y'], line ['address']))
     return points
-def load_points_from_json_into_dict():
-    points = {}
-    for line in read_json_file():
-        points[line['address']] = Point(line['x'], line['y'], line ['address'])
-    return points
-def getPoints(subset):
+
+def get_points(subset):
     if subset == 0:
         return [
             Point(50.290138, 18.677277, "AA:BB"),
