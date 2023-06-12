@@ -15,12 +15,14 @@ class SpauData:
                  uwb: UwbDataPair,
                  ahrs: AhrsData,
                  gps: GpsData,
-                 position : Point = Point(0.0, 0.0, "NOT_CALCULATED")):
+                 position : Point = Point(0.0, 0.0, "NOT_CALCULATED"),
+                 time: float = time()):
         self.uwb_data_pair = uwb
         self.ahrs_data = ahrs
         self.gps_data = gps
         self._validate_intupts()
         self.calculated_position = position
+        self.time = time
 
     def __repr__(self) -> str:
         val =   "                FRAME VALID\n"
@@ -101,7 +103,7 @@ class Spausync:
                 self.ahrs_connection.get_last_value(),
                 self.gps_connection.get_last_value()
             )
-        data.calculate((get_points()[0], get_points()[1]))
+        data.calculate_from_sweep(sweep)
         self.collected_data+=data.__repr__()
         #self.collected_data.append(data)
         return data

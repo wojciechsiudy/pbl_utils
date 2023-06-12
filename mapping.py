@@ -138,9 +138,9 @@ def calculate_position(gps_data: GpsData, uwb_data: UwbDataPair, points_pair: tu
     # non intersecting
     if d > distance_a + distance_b:
         while (distance_a + distance_b < d and scale_offset_factor < MAX_UWB_OFFSET_FACTOR):
-            if power_a>power_b:
+            if power_a < power_b:
                 distance_b *= scale_offset_factor
-            elif power_a<power_b:
+            elif power_a > power_b:
                 distance_a *= scale_offset_factor
             scale_offset_factor += 0.005
     if d > distance_a + distance_b:
@@ -187,9 +187,9 @@ def sweep_position(anchor_A:Point, anchor_B:Point, ctrl_anchor:Point, distance_a
     # non intersecting
     if d > distance_a + distance_b:
         while (distance_a + distance_b < d and scale_offset_factor < MAX_UWB_OFFSET_FACTOR):
-            if power_a>power_b:
+            if power_a < power_b:
                 distance_b *= scale_offset_factor
-            elif power_a<power_b:
+            elif power_a > power_b:
                 distance_a *= scale_offset_factor
             scale_offset_factor += 0.005
     if d > distance_a + distance_b:
@@ -297,3 +297,9 @@ def load_points_from_json():
 
 def get_points():
     return load_points_from_json()
+
+def get_point_by_address(address):
+    for point in get_points():
+        if point.address == address:
+            return point
+    return None
