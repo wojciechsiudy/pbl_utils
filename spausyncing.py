@@ -1,4 +1,4 @@
-from .mapping import GpsData, Point, GPSConnection, get_points, calculate_position, sweep_position
+from .mapping import GpsData, Point, GPSConnection, get_points, calculate_position, sweep_position, get_GpsData_from_Point
 from .ranging import UwbConnection, UwbDataPair,UwbSingleData
 from .inercing import AhrsConnection, AhrsData
 
@@ -54,8 +54,7 @@ class SpauData:
     def calculate(self, points_pair):
         self.calculated_position = calculate_position(self.gps_data, self.uwb_data_pair, points_pair)
 
-    def calculate_from_sweep(self, sweep:list[UwbSingleData]):
-        # convert UwbData to Points
+    def calculate_position_with_sweep(self, sweep:list[UwbSingleData]):
         points = get_points()
         if len(sweep) < 3:
             return
@@ -64,7 +63,8 @@ class SpauData:
             for point in points:
                 if point.tag_address == sweep[i].tag_address:
                     gps_points.append(point)
-        self.calculated_position = sweep_position(gps_points[0],gps_points[1],gps_points[2],sweep[0].distance,sweep[1].distance,sweep[2].distance,sweep[0].power,sweep[1].power)
+        control_anchor = sweep_position(gps_points[0],gps_points[1],gps_points[2],sweep[0].distance,sweep[1].distance,sweep[2].distance,sweep[0].power,sweep[1].power)
+        self.calculated_position = calculate_position(get_GpsData_from_Point(control_anchor), self.uwb_data_pair, (gps_points[0], gps_points[1]))
 
 class Spausync:
     def __init__(self):
@@ -92,18 +92,18 @@ class Spausync:
         #points_to_talk = select_points(self.gps_connection.get_last_value())
         #self.uwb_connection.ask_for_distances(points_to_talk[0].address, points_to_talk[1].address)
         uwb_data = self.uwb_connection.get_last_UwbDataPair()
-        if self.uwb_connection.is_sweep_ready():
-            sweep = self.uwb_connection.get_last_sweep()
-
         if uwb_data == None:
             return None
+        if self.uwb_connection.is_sweep_ready():
+            sweep = self.uwb_connection.get_last_sweep()
         else:
             data = SpauData(
                 uwb_data,
                 self.ahrs_connection.get_last_value(),
                 self.gps_connection.get_last_value()
             )
-        data.calculate_from_sweep(sweep)
+        if sweep is not None:
+            data.calculate_position_with_sweep(sweep)
         self.collected_data+=data.__repr__()
         #self.collected_data.append(data)
         return data

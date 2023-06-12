@@ -45,6 +45,10 @@ class GpsData(Point, StampedData):
     def __repr__(self):
         return str(self.x) + " " + str(self.y)
 
+@staticmethod
+def get_GpsData_from_Point(point: Point) -> GpsData:
+    return GpsData(point.x, point.y, point.address)
+
 class GPSConnection():
     """
     Class holding GPS connection
