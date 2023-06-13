@@ -1,6 +1,7 @@
 from .mapping import GpsData, Point, GPSConnection, get_points, calculate_position, sweep_position, get_GpsData_from_Point
 from .ranging import UwbConnection, UwbDataPair,UwbSingleData
 from .inercing import AhrsConnection, AhrsData
+from .misc import log
 
 from time import time
 
@@ -9,6 +10,9 @@ import sys
 import json
 import pandas as pd
 import numpy as np
+
+def debug(message):
+    log("log_spausyncing.txt", message)
 
 class SpauData:
     def __init__(self,
@@ -54,23 +58,30 @@ class SpauData:
     def calculate(self, points_pair):
         self.calculated_position = calculate_position(self.gps_data, self.uwb_data_pair, points_pair)
 
-    def calculate_position_with_sweep(self, sweep:list[UwbSingleData]):
+    def calculate_position_with_sweep(self, sweep:list[UwbSingleData], uwb_data_pair:UwbDataPair):
         points = get_points()
-        if len(sweep) < 3:
+        sweep.sort(key=lambda x: x.distance)
+        debug("Points: " + str(points))
+        debug("Sweep: " + str(sweep))
+        if sweep is None or len(sweep) < 2:
             return
         gps_points = []
         for i in range(3):
             for point in points:
-                if point.tag_address == sweep[i].tag_address:
+                if point.address == sweep[i].tag_address:
                     gps_points.append(point)
-        control_anchor = sweep_position(gps_points[0],gps_points[1],gps_points[2],sweep[0].distance,sweep[1].distance,sweep[2].distance,sweep[0].power,sweep[1].power)
+        debug("GPS points: " + str(gps_points))
+        control_anchor = sweep_position(uwb_data_pair, sweep[2])
+        debug("Control anchor: " + str(control_anchor))
         self.calculated_position = calculate_position(get_GpsData_from_Point(control_anchor), self.uwb_data_pair, (gps_points[0], gps_points[1]))
+        debug("Calculated position: " + str(self.calculated_position))
 
 class Spausync:
     def __init__(self):
         self.uwb_connection = UwbConnection()
         self.ahrs_connection = AhrsConnection(mock=True)
         self.gps_connection = GPSConnection(mock=True)
+        self.last_calculated_position = Point(0.0, 0.0, "NOT_CALCULATED")
         signal.signal(signal.SIGINT,self.end)
         self.collected_data = ""
         #self.UwBdata = pd.DataFrame(columns=['timestamp_first','timestamp_second', 'tag_adress_first', 'tag_adress_second', 'distance_first', 'distance_second'])
@@ -94,18 +105,19 @@ class Spausync:
         uwb_data = self.uwb_connection.get_last_UwbDataPair()
         if uwb_data == None:
             return None
-        if self.uwb_connection.is_sweep_ready():
-            sweep = self.uwb_connection.get_last_sweep()
-        else:
-            data = SpauData(
+        data = SpauData(
                 uwb_data,
                 self.ahrs_connection.get_last_value(),
                 self.gps_connection.get_last_value()
             )
-        if sweep is not None:
-            data.calculate_position_with_sweep(sweep)
+        if self.uwb_connection.is_sweep_ready():
+            sweep = self.uwb_connection.get_last_sweep()
+            if sweep is not None:
+                data.calculate_position_with_sweep(sweep, uwb_data)
+                self.last_calculated_position = data.calculated_position
+        else:
+            data.calculated_position = self.last_calculated_position
         self.collected_data+=data.__repr__()
-        #self.collected_data.append(data)
         return data
 
     def end(self, sig, frame):

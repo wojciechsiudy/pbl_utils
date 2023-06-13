@@ -17,5 +17,9 @@ class StampedData:
             return False
         else:
             return True
-    
 
+def log(filename, message):
+    """
+    Function for logging
+    """
+    open(filename, "a+").write(message + "\n")

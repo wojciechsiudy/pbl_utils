@@ -9,7 +9,7 @@ from multiprocessing import Process, Queue, Value
 from .uwb_constants import UwbConstants
 #from .pointsDB import getPoints
 from .misc import StampedData
-from .ranging import UwbDataPair
+from .ranging import UwbDataPair, UwbSingleData
 
 POSITION_RADIUS_M : float = float('inf')
 MAX_UWB_OFFSET_FACTOR: float = 1.15
@@ -178,7 +178,23 @@ def calculate_position(gps_data: GpsData, uwb_data: UwbDataPair, points_pair: tu
             position = transformer2.transform(x4, y4)
             return Point(position[0], position[1])
 
-def sweep_position(anchor_A:Point, anchor_B:Point, ctrl_anchor:Point, distance_a:float, distance_b:float, distance_c:float, power_a:float, power_b:float):
+def sweep_position(uwb_data: UwbDataPair, sweeped_anchor: UwbSingleData):
+        # expand parameters
+    try:
+        anchor_A        = get_point_by_address(uwb_data.nearest.tag_address)
+        anchor_B        = get_point_by_address(uwb_data.second.tag_address)
+        ctrl_anchor     = get_point_by_address(sweeped_anchor.tag_address)
+        distance_a      = uwb_data.nearest.distance
+        distance_b      = uwb_data.second.distance
+        distance_c      = sweeped_anchor.distance
+        power_a         = uwb_data.nearest.power
+        power_b         = uwb_data.second.power
+    except AttributeError as err:
+        return Point(0.0, 0.0, "-1 bad arguments")
+
+    if anchor_A is None or anchor_B is None or ctrl_anchor is None:
+        return Point(0.0, 0.0, "-2 wrong points received")
+
     transformer1 = Transformer.from_crs("EPSG:4326", "EPSG:2177")        #transform from WGS84 to PL-2000
     transformer2 = Transformer.from_crs("EPSG:2177", "EPSG:4326")        #transform from PL-2000 to WGS84
     anch_xy_A = transformer1.transform(anchor_A.x, anchor_A.y)

@@ -197,16 +197,21 @@ class UwbConnection:
             pass
 
     def get_last_sweep(self) -> list[UwbSingleData] | None:
+        sweep = []
         if self.sweep_queue.qsize() == 0:
             return self.sweep[-1]
-        sweep = []
-        while self.sweep_queue.qsize() > 0:
-            sweep.append(self.sweep_queue.get())
-        debug(str(sweep))
-        return sweep.reverse()
+        else:
+            debug("get_last_sweep, qsize: " + str(self.sweep_queue.qsize()))
+            sweep = self.sweep_queue.get()
+        debug("queue state " + str(sweep))
+        sweep.reverse()
+        return sweep
 
     def is_sweep_ready(self) -> bool:
-        return self.sweep_queue.qsize() > 0
+        if self.sweep_queue.qsize() > 0:
+            if self.sweep_queue != None:
+                return True
+        return False
 
     # def read_uwb_data(self, address: str) -> UwbDataPair:
     #     """
@@ -254,7 +259,7 @@ class UwbConnection:
         # self.connect()
 
 
-def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Queue):
+def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue, sweep_queue: Queue):
     debug("Serial process has begun.")
     """
     Read the last recived distance via serial
@@ -276,12 +281,16 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue,sweep_queue: Q
             # Sweep detected
             if data.startswith("SWEEP"):
                 debug("Sweep detected!")
-                sweep_size = int(data.split(" ")[1])
             elif data.startswith("S"):
-                debug("S dectected!")
-                sweep.append(UwbSingleData.create_UWB_single_data(data[3:]))
-                if len(sweep) == sweep_size:
+                debug("Sweep data detected! " + data)
+                single_sweeped_uwb = UwbSingleData.create_UWB_single_data(data[3:])
+                debug("Single sweep data created! " + str(single_sweeped_uwb))
+                if single_sweeped_uwb.tag_address != "none":
+                    sweep.append(single_sweeped_uwb)
+                if len(sweep) > 2:
+                    debug("Sweep completed! " + str(sweep))
                     sweep_queue.put(sweep)
+                    debug("main loop, qsize: " + str(sweep_queue.qsize()))
                     sweep=[]
             else:
                 queue.put(data)
