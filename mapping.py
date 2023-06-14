@@ -323,3 +323,9 @@ def get_point_by_address(address):
         if point.address == address:
             return point
     return None
+
+def get_point_tuple_from_UwbDataPair(pair: UwbDataPair):
+    address_a = pair.nearest.tag_address
+    address_b = pair.second.tag_address
+    point_tuple = (get_point_by_address(address_a), get_point_by_address(address_b))
+    return point_tuple

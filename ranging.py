@@ -107,7 +107,7 @@ class UwbConnection:
         self.measures_queue = Queue(maxsize=10)
         self.sweep_queue = Queue(maxsize=20)
         self.sweep_size = 0
-        self.sweep=[]
+        self.last_sweep=[]
         try:
             #self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
             self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"),
@@ -199,10 +199,11 @@ class UwbConnection:
     def get_last_sweep(self) -> list[UwbSingleData] | None:
         sweep = []
         if self.sweep_queue.qsize() == 0:
-            return self.sweep[-1]
+            return self.last_sweep
         else:
             debug("get_last_sweep, qsize: " + str(self.sweep_queue.qsize()))
             sweep = self.sweep_queue.get()
+            self.last_sweep = sweep
         debug("queue state " + str(sweep))
         sweep.reverse()
         return sweep

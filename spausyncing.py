@@ -1,4 +1,4 @@
-from .mapping import GpsData, Point, GPSConnection, get_points, calculate_position, sweep_position, get_GpsData_from_Point
+from .mapping import GpsData, Point, GPSConnection, get_points, calculate_position, sweep_position, get_GpsData_from_Point, get_point_tuple_from_UwbDataPair, get_point_by_address
 from .ranging import UwbConnection, UwbDataPair,UwbSingleData
 from .inercing import AhrsConnection, AhrsData
 from .misc import log
@@ -115,6 +115,11 @@ class Spausync:
             if sweep is not None:
                 data.calculate_position_with_sweep(sweep, uwb_data)
                 self.last_calculated_position = data.calculated_position
+        elif self.last_calculated_position == Point(0.0, 0.0, "NOT_CALCULATED"):
+            if self.uwb_connection.get_last_sweep() is not None and self.uwb_connection.get_last_UwbDataPair() is not None and len(self.uwb_connection.get_last_sweep()) > 2:
+                data.calculated_position = calculate_position(get_point_by_address(self.uwb_connection.get_last_sweep()[2].tag_address),
+                                                              self.uwb_connection.get_last_UwbDataPair(),
+                                                              get_point_tuple_from_UwbDataPair(self.uwb_connection.get_last_UwbDataPair()))
         else:
             data.calculated_position = self.last_calculated_position
         self.collected_data+=data.__repr__()
