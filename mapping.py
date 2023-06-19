@@ -237,10 +237,10 @@ def sweep_position(uwb_data: UwbDataPair, sweeped_anchor: UwbSingleData):
         d1 = math.sqrt((ctrlanch_xy[0] - pa[0]) **2 + (ctrlanch_xy[1] - pa[1]) **2)
         d2 = math.sqrt((ctrlanch_xy[0] - pb[0]) **2 + (ctrlanch_xy[1] - pb[1]) **2)
         if abs(d1 - distance_c) < abs(d2 - distance_c):
-            position = transformer2.transform(x3, y3)
+            position = transformer2.transform(x4, y4)
             return Point(position[0], position[1])
         else:
-            position = transformer2.transform(x4, y4)
+            position = transformer2.transform(x3, y3)
             return Point(position[0], position[1])
 
 def nmea_sentence_to_gps_point(data):
