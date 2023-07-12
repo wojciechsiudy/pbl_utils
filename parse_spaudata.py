@@ -126,8 +126,8 @@ if __name__ == "__main__":
     calc_x = []
     calc_y = []
 
-    sweeps = process_sweep("seria2_ranging_log.txt")
-    data = process_file("seria2_data.txt")
+    #sweeps = process_sweep("seria2_ranging_log.txt")
+    data = process_file("data.txt")
     #print(data)
 
     # with open("calculated_positions.csv", "w") as f:
@@ -135,37 +135,37 @@ if __name__ == "__main__":
     #         f.write(str(d.calculated_position.x) + "," + str(d.calculated_position.y) + "\n")
 
     for d in data:
-        for s in sweeps:
-            #print(s.sweeps)
-            if abs(float(s.time) - d.time) < 1.5:
-                if (len(s.sweeps) > 2):
-                    anchor_a = get_point_by_address(d.uwb_data_pair.nearest.tag_address)
-                    anchor_b = get_point_by_address(d.uwb_data_pair.second.tag_address)
-                    distance_a = float(d.uwb_data_pair.nearest.distance)
-                    distance_b = float(d.uwb_data_pair.second.distance)
-                    distance_c = float(s.sweeps[2][1])
-                    power_a = float(d.uwb_data_pair.nearest.power)
-                    power_b = float(d.uwb_data_pair.second.power)
-                    ctr_anchor = get_point_by_address(s.sweeps[2][0])
-                    if anchor_a is not None and anchor_b is not None and ctr_anchor is not None:
-                        sweep = sweep_position(anchor_a, anchor_b, ctr_anchor, distance_a, distance_b, distance_c, power_a, power_b)
-                        position = calculate_position(GpsData(ctr_anchor.x, ctr_anchor.y),
-                                                      UwbDataPair(UwbSingleData(d.uwb_data_pair.nearest.tag_address, distance_a, power_a, True),
-                                                                  UwbSingleData(d.uwb_data_pair.second.tag_address, distance_b, power_b, True)),
-                                                    (anchor_a, anchor_b))
-                        calc_x.append(position.x)
-                        calc_y.append(position.y)
-                        print(position.x, position.y)
-                    break
+        # for s in sweeps:
+        #     #print(s.sweeps)
+        #     if abs(float(s.time) - d.time) < 1.5:
+        #         if (len(s.sweeps) > 2):
+        #             anchor_a = get_point_by_address(d.uwb_data_pair.nearest.tag_address)
+        #             anchor_b = get_point_by_address(d.uwb_data_pair.second.tag_address)
+        #             distance_a = float(d.uwb_data_pair.nearest.distance)
+        #             distance_b = float(d.uwb_data_pair.second.distance)
+        #             distance_c = float(s.sweeps[2][1])
+        #             power_a = float(d.uwb_data_pair.nearest.power)
+        #             power_b = float(d.uwb_data_pair.second.power)
+        #             ctr_anchor = get_point_by_address(s.sweeps[2][0])
+        #             if anchor_a is not None and anchor_b is not None and ctr_anchor is not None:
+        #                 sweep = sweep_position(anchor_a, anchor_b, ctr_anchor, distance_a, distance_b, distance_c, power_a, power_b)
+        #                 position = calculate_position(GpsData(ctr_anchor.x, ctr_anchor.y),
+        #                                               UwbDataPair(UwbSingleData(d.uwb_data_pair.nearest.tag_address, distance_a, power_a, True),
+        #                                                           UwbSingleData(d.uwb_data_pair.second.tag_address, distance_b, power_b, True)),
+        #                                             (anchor_a, anchor_b))
+        #                 calc_x.append(position.x)
+        #                 calc_y.append(position.y)
+        #                 print(position.x, position.y)
+        #             break
 
 
-        # if d.calculated_position.x == 0.0 or d.calculated_position.y == 0.0 or d.gps_data.y == 0.0 or d.gps_data.x == 0.0:
-        #     continue
-        # else:
-        #     gps_x.append(d.gps_data.x)
-        #     gps_y.append(d.gps_data.y)
-        #     calc_x.append(d.calculated_position.x)
-        #     calc_y.append(d.calculated_position.y)
+        if d.calculated_position.x == 0.0 or d.calculated_position.y == 0.0 or d.gps_data.y == 0.0 or d.gps_data.x == 0.0:
+            continue
+        else:
+            # gps_x.append(d.gps_data.x)
+            # gps_y.append(d.gps_data.y)
+            calc_x.append(d.calculated_position.x)
+            calc_y.append(d.calculated_position.y)
 
     #make the plot
     #plt.plot(gps_y, gps_x, 'ro')

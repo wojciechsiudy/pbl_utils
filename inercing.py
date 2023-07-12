@@ -41,7 +41,7 @@ class AhrsData(StampedData):
         return value
 
 class AhrsConnection:
-    def __init__(self, serial_path="/dev/AHRS", mock=False):
+    def __init__(self, serial_path="/dev/ttyUSB0", mock=False):
         self.mock = mock
         self.last_value = AhrsData()
         self.measures_queue = Queue(maxsize=10)

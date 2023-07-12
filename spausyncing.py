@@ -1,9 +1,12 @@
+# Purpose: Main module of the project
 from .mapping import GpsData, Point, GPSConnection, get_points, calculate_position, sweep_position, get_GpsData_from_Point, get_point_tuple_from_UwbDataPair, get_point_by_address
 from .ranging import UwbConnection, UwbDataPair,UwbSingleData
 from .inercing import AhrsConnection, AhrsData
 from .misc import log
 
 from time import time
+from datetime import datetime
+
 
 import signal
 import sys
@@ -12,7 +15,7 @@ import pandas as pd
 import numpy as np
 
 def debug(message):
-    log("log_spausyncing.txt", message)
+    log(('log_spausyncing.txt'), message)
 
 class SpauData:
     def __init__(self,
@@ -77,10 +80,11 @@ class SpauData:
         debug("Calculated position: " + str(self.calculated_position))
 
 class Spausync:
-    def __init__(self):
-        self.uwb_connection = UwbConnection()
-        self.ahrs_connection = AhrsConnection(mock=True)
-        self.gps_connection = GPSConnection(mock=True)
+    def __init__(self, family: str = "AA", mock_ahrs: bool = True, mock_gps: bool = True):
+        self.family = family
+        self.uwb_connection = UwbConnection(family)
+        self.ahrs_connection = AhrsConnection(mock=mock_ahrs)
+        self.gps_connection = GPSConnection(mock=mock_gps)
         self.last_calculated_position = Point(0.0, 0.0, "NOT_CALCULATED")
         signal.signal(signal.SIGINT,self.end)
         self.collected_data = ""
@@ -133,6 +137,7 @@ class Spausync:
         self.ahrs_connection.end()
         self.uwb_connection.end()
         self.gps_connection.end()
-        with open('data.txt', 'w') as outfile:
+        time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        with open(('data_' + time + "_" + str(self.uwb_connection.family) + '.txt'), 'w') as outfile:
             outfile.write(self.collected_data)
         sys.exit(0)

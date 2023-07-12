@@ -99,7 +99,9 @@ class UwbConnection:
     Constructor throws UwbFatalError when connection is
     not possible
     """
-    def __init__(self):
+    def __init__(self, family: str = "AA"):
+        self.family = family
+        LOGFILE = (self.family + "_ranging_log.txt")
         self.set_initial_values()
         self.debug(("It is " + str(datetime.now()) +" Initializing..."), 2)
         self.read_settings_from_json()
@@ -110,7 +112,7 @@ class UwbConnection:
         self.last_sweep=[]
         try:
             #self.ble_device = BLE_GATT.Central(self.uwb_mac_adress)
-            self.serial_device = Serial(self.settings.get_value("UWB_SERIAL_ADDRESS"),
+            self.serial_device = Serial(self.uwb_serial_address,
                                         baudrate=115200,
                                         timeout=1)
         except SerialException:
@@ -126,7 +128,7 @@ class UwbConnection:
 
     def _set_processes(self):
         self.process_reader = Process(target=_uwb_anwser_serial_reader,
-                               args=(self.serial_device, self.measures_queue,self.sweep_queue))
+                               args=(self.serial_device, self.measures_queue,self.sweep_queue, self.family))
     def _begin_process(self):
         self.process_reader.start()
 
@@ -146,12 +148,18 @@ class UwbConnection:
         self.read_characteristic = self.settings.get_value("READ_CHARACTERISTIC_UUID")
         self.write_characteristic = self.settings.get_value("WRITE_CHARACTERISTIC_UUID")
         self.debug_level = int(self.settings.get_value("DEBUG_LEVEL")) # type: ignore
+        if self.family == "AA":
+            self.uwb_serial_address = self.settings.get_value("UWB_SERIAL_ADDRESS")
+        elif self.family == "BB":
+                self.uwb_serial_address = self.settings.get_value("UWB_SERIAL_ADDRESS_FAMILY_BB")
+        else:
+            SystemExit("Wrong family name!")
         self.debug("Settings loaded!", 3)
 
     def debug(self, message: str, level=3):
         if self.debug_level >= level:
             print(message)
-            with open(LOGFILE, "a+") as file:
+            with open((self.family + "_ranging_log.txt"), "a+") as file:
                 file.write(message + "\n")
 
     # def connect(self):
@@ -251,7 +259,7 @@ class UwbConnection:
     def restart(self):
         self.disconnect()
         self.set_initial_values()
-        serial_address = self.settings.get_value("UWB_SERIAL_ADDRESS")
+        serial_address = self.uwb_serial_address
         try:
             reset_commands = ["--port", serial_address, "run"]
             esptool.main(reset_commands)
@@ -260,8 +268,8 @@ class UwbConnection:
         # self.connect()
 
 
-def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue, sweep_queue: Queue):
-    debug("Serial process has begun.")
+def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue, sweep_queue: Queue, family="AA"):
+    debug("Serial process has begun.", family)
     """
     Read the last recived distance via serial
 
@@ -281,22 +289,22 @@ def _uwb_anwser_serial_reader(serial_device: Serial, queue: Queue, sweep_queue: 
             tick += 1
             # Sweep detected
             if data.startswith("SWEEP"):
-                debug("Sweep detected!")
+                debug("Sweep detected!", family)
             elif data.startswith("S"):
-                debug("Sweep data detected! " + data)
+                debug(("Sweep data detected! " + data), family)
                 single_sweeped_uwb = UwbSingleData.create_UWB_single_data(data[3:])
-                debug("Single sweep data created! " + str(single_sweeped_uwb))
+                debug(("Single sweep data created! " + str(single_sweeped_uwb)), family)
                 if single_sweeped_uwb.tag_address != "none":
                     sweep.append(single_sweeped_uwb)
                 if len(sweep) > 2:
-                    debug("Sweep completed! " + str(sweep))
+                    debug(("Sweep completed! " + str(sweep)), family)
                     sweep_queue.put(sweep)
-                    debug("main loop, qsize: " + str(sweep_queue.qsize()))
+                    debug(("main loop, qsize: " + str(sweep_queue.qsize()), family))
                     sweep=[]
             else:
                 queue.put(data)
         except SerialException:
-            debug("Serial error during read.")
+            debug("Serial error during read." , family)
 
-def debug(message):
-    open("ranging_log.txt", "a+").write(str(time()) +  ": " + message + "\n")
+def debug(message, family="AA"):
+    open((family + "_ranging_log.txt"), "a+").write(str(time()) +  ": " + message + "\n")
